@@ -1,0 +1,10 @@
+{
+  "time_rows": 3050,
+  "numeric_C_cells": 44061,
+  "outside_blank_cells": 19989,
+  "all_values_and_masks_match": true,
+  "strict_terminal_check": true,
+  "surface_column_present": true,
+  "input_files_unchanged": true,
+  "markdown_tables_match": true
+}
