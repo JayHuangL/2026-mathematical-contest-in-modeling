@@ -1,0 +1,176 @@
+# ============================================================
+# 通用 .gitignore
+# ============================================================
+
+# ---------- 操作系统 ----------
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.lnk
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+# Linux
+*~
+.directory
+.Trash-*
+
+# ---------- 编辑器 / IDE ----------
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+!.vscode/launch.json
+!.vscode/tasks.json
+.idea/
+*.iml
+*.ipr
+*.iws
+*.swp
+*.swo
+*.sublime-workspace
+*.sublime-project
+nbproject/
+.netbeans/
+
+# ---------- 环境变量 / 密钥 ----------
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+secrets.json
+credentials.json
+
+# ---------- Python ----------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+develop-eggs/
+downloads/
+eggs/
+.eggs/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+.venv/
+venv/
+env/
+ENV/
+.python-version
+
+# 测试 / 类型检查 / 覆盖率
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+.hypothesis/
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.ruff_cache/
+.pytype/
+.cache/
+
+# ---------- Jupyter ----------
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+profile_default/
+ipython_config.py
+
+# ---------- Node.js ----------
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+.pnpm-store/
+.npm/
+.yarn/
+.yarnrc.yml
+.eslintcache
+.stylelintcache
+bower_components/
+jspm_packages/
+dist/
+build/
+.cache/
+.parcel-cache/
+.next/
+.nuxt/
+.gatsby/
+.vite/
+
+# ---------- LaTeX / 文档编译产物 ----------
+*.aux
+*.lof
+*.log
+*.lot
+*.fls
+*.out
+*.toc
+*.fmt
+*.fot
+*.cb
+*.cb2
+*.synctex.gz
+*.bbl
+*.blg
+*.fdb_latexmk
+*.run.xml
+
+# ---------- 压缩包 / 临时文件 ----------
+*.tmp
+*.temp
+*.bak
+*.orig
+*.rej
+*.rar
+*.7z
+*.tar
+*.tar.gz
+
+# 压缩包默认忽略；如需入库请用 git add -f 或在下方放行
+*.zip
+
+# ============================================================
+# 本项目相关（按需取消注释）
+# ============================================================
+
+# 扫描/预览等中间产物
+*.ndjson
+
+# 第三方依赖的本地副本（体积大，建议不入库）
+# questions/A题/tmp/
+
+# 生成的结果数据（如需保留只保留脚本，请取消注释）
+# questions/**/outputs/
+# questions/**/result*_full_precision.npz
+
+# 电子书 / PDF 等大文件
+# docs/电子书/
+# questions/A题/tmp/pdfs/
+# questions/**/附件/
+
+# 原始题目压缩包（本条覆盖上面的 *.zip 规则，使其保留入库）
+!CUMCM*.zip
+!questions/**/附件*/*.zip
