@@ -155,7 +155,7 @@ def main():
     parser.add_argument('--check-time',action='store_true')
     parser.add_argument('--sensitivity',action='store_true')
     parser.add_argument('--boundary-mode',choices=('staged','raw'),default='staged',
-                        help='Use the common detected stage boundary (default) or raw 60 s knots.')
+                        help='Use independent detected temperature/moisture stage boundaries (default) or raw 60 s knots.')
     parser.add_argument('--fit-endpoint-s',type=float,default=None)
     args=parser.parse_args()
     args.out.mkdir(parents=True,exist_ok=True)

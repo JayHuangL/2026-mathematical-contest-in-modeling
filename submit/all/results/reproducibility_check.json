@@ -10,12 +10,12 @@
     "payload": true
   },
   "q3": {
-    "rows": 3456,
+    "rows": 3461,
     "radial_columns": 21,
     "payload": true
   },
   "q4": {
-    "rows": 3072,
+    "rows": 3077,
     "radial_columns": 21,
     "payload": true
   },
@@ -44,7 +44,7 @@
       "Sheet1"
     ],
     "rows": [
-      3456
+      3461
     ]
   },
   "q4_workbook": {
@@ -52,7 +52,7 @@
       "Sheet1"
     ],
     "rows": [
-      3072
+      3077
     ]
   },
   "input_sha256": {
