@@ -37,8 +37,8 @@
     "mode": "nonlinear_fit"
   },
   "selected_boundary_method": "stretched_exp",
-  "boundary_method_comparison": "output/A题深化分析/boundary_cv.csv",
-  "fit_endpoint_comparison": "output/A题深化分析/boundary_endpoint_comparison.csv",
+  "boundary_method_comparison": "boundary_cv.csv",
+  "fit_endpoint_comparison": "boundary_endpoint_comparison.csv",
   "environment_1800": [
     1800.0,
     41.49195624697986,

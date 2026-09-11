@@ -1,8 +1,9 @@
 """Question 1: conservative radial finite volumes + implicit BDF integration.
 
-Run from any directory: python 第一问/solve_q1.py
+Run from this directory: python solve_q1.py
 Dependencies: numpy, scipy, openpyxl (read-only), matplotlib.
-The separate build_workbook.mjs exports the prescribed Excel template.
+result1.xlsx is already exported; the solver regenerates the numerical payloads
+and validation records in this folder.
 """
 from pathlib import Path
 import argparse
@@ -20,13 +21,13 @@ try:
 except ImportError:  # The standard-library reader below keeps this solver reproducible.
     openpyxl = None
 
-ROOT = Path(__file__).resolve().parents[1]
 OUT = Path(__file__).resolve().parent
+INPUT = OUT / 'data' / '附件1.xlsx'
 R, RHO, CP, K, H, HM = 0.02, 820.0, 2600.0, 0.36, 25.0, 8e-7
 ALPHA = K / (RHO * CP)
 TIMES = np.arange(1801, dtype=float)
 REPORT_TIMES = np.array([100, 300, 600, 900, 1200, 1500, 1800])
-# The endpoint sweep in output/A题深化分析 shows that 1800 s is the best
+# The endpoint sweep in boundary_endpoint_comparison.csv shows that 1800 s is the best
 # blocked early-time endpoint, while the full 14400 s fit is preferable for
 # a boundary used by later questions.  Q1 integrates only to 1800 s, so the
 # default below is an explicit global-fit choice rather than an extrapolation
@@ -36,7 +37,7 @@ DEFAULT_FIT_WINDOW_S = 14400.0
 
 def read_environment():
     """Read Attachment 1 without requiring a writable spreadsheet application."""
-    path = ROOT / '附件/附件1.xlsx'
+    path = INPUT
     if openpyxl is not None:
         wb = openpyxl.load_workbook(path, data_only=True, read_only=True)
         records = list(wb.active.values)
@@ -330,8 +331,8 @@ def write_sensitivity_report(sensitivity):
         '', '## 5. 解读边界', '',
         '本表中的“linear_input”直接量化原分段线性输入与主拟合输入的差异；两个拟合窗情景量化拟合窗口选择的不确定性。',
         '对流和扩散率情景只作一因子扰动，不能等同于参数的统计置信区间。潜热、气固平衡换算和轴向传递仍未被识别，因此不应把本表当作完整的物理误差上界。',
-        '六类候选边界（分段线性、PCHIP、Akima、自然三次样条、平滑样条、stretched_exp）的 blocked hold-out 指标、粗糙度和越界检查见 [boundary_cv.csv](../../../output/A题深化分析/boundary_cv.csv)；主模型选择 stretched_exp，是因为其在两条序列上均取得最低验证误差且没有区间外越界。',
-        '拟合曲线、候选方法和拟合终点的可视化见 [边界方法与阶段图](../../../output/A题深化分析/figures/01_boundary_methods_and_phase.png)、[拟合终点比较图](../../../output/A题深化分析/figures/02_endpoint_comparison.png)、[模型输出图](../../../output/A题深化分析/figures/05_model_outputs.png) 和 [敏感性图](../../../output/A题深化分析/figures/04_model_sensitivity.png)。',
+        '六类候选边界（分段线性、PCHIP、Akima、自然三次样条、平滑样条、stretched_exp）的 blocked hold-out 指标、粗糙度和越界检查见 [boundary_cv.csv](boundary_cv.csv)。温度序列中 stretched_exp 的 blocked hold-out RMSE 最低；含水率序列中自然三次样条 RMSE 略低，但 stretched_exp 的粗糙度约为 7.30×10^-10，并由正参数保证单调性、没有区间外越界。因此综合误差、平滑性、单调性、越界检查和统一函数族的可解释性，主模型选择 stretched_exp。',
+        '拟合曲线、候选方法和拟合终点的可视化见 [边界方法与阶段图](figures/01_boundary_methods_and_phase.png)、[拟合终点比较图](figures/02_endpoint_comparison.png)、[模型输出图](figures/05_model_outputs.png) 和 [敏感性图](figures/04_model_sensitivity.png)。',
         '',
     ]
     (OUT / '边界拟合与敏感性分析.md').write_text('\n'.join(lines), encoding='utf-8')
@@ -439,8 +440,8 @@ def main():
                'grid_intervals': args.grids[-1], 'rtol': 2e-10, 'atol': 2e-12,
                'max_step_s': 5, 'boundary': boundary_info,
                'selected_boundary_method': 'stretched_exp',
-               'boundary_method_comparison': 'output/A题深化分析/boundary_cv.csv',
-               'fit_endpoint_comparison': 'output/A题深化分析/boundary_endpoint_comparison.csv',
+               'boundary_method_comparison': 'boundary_cv.csv',
+               'fit_endpoint_comparison': 'boundary_endpoint_comparison.csv',
                'environment_1800': env[env[:, 0] == 1800][0].tolist(),
                'raw_environment_1800': raw_env[raw_env[:, 0] == 1800][0].tolist(),
                'convergence': convergence, 'time_check': time_check,

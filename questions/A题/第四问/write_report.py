@@ -1,5 +1,6 @@
 from pathlib import Path
 import json
+import csv
 HERE=Path(__file__).resolve().parent
 s=json.loads((HERE/'validation.json').read_text(encoding='utf-8'))
 tables=(HERE/'结果表.md').read_text(encoding='utf-8').replace('# 表6：收缩药材烘干过程的水分浓度','### 表6：收缩药材烘干过程的水分浓度')
@@ -7,19 +8,31 @@ grid=['| 区间数 | 阈值时间 / h | 与上一网格相差 / s | 有效含水
 for r in s['grid_checks']:
     grid.append(f"| {r['N']} | {r['event_s']/3600:.9f} | "+(f"{r['event_diff_s']:.6f}" if 'event_diff_s' in r else '—')+' | '+(f"{r['max_output_C_diff']:.3e}" if 'max_output_C_diff' in r else '—')+' |')
 cases={r['case']:r['event_h'] for r in s['comparisons']}
-baseline=next(r['event_s']/3600 for r in s['grid_checks'] if r['N']==800)
+baseline=s['event_s']/3600
+q3_reference=s.get('q3_finish_h',57.5866)
 compare='\n'.join(['| 物性关系 | 固定半径2 cm | 附件2收缩半径 |','|---|---:|---:|',
- f"| 附录3 | {s['q3_event_h_N800']:.6f} h | {cases['appendix3_shrinking']:.6f} h |",
+  f"| 附录3 | {q3_reference:.6f} h | {cases['appendix3_shrinking']:.6f} h |",
  f"| 附录4 | {cases['appendix4_fixed_radius']:.6f} h | {baseline:.6f} h |"])
+radius_lines=['| 插值方法 | 交叉验证 RMSE / cm | 违反单调段数 | 最大越界 / cm | 选择 |',
+              '|---|---:|---:|---:|---|']
+radius_csv=HERE.parents[2]/'output/A题深化分析/radius_method_comparison.csv'
+if radius_csv.exists():
+    with radius_csv.open(encoding='utf-8',newline='') as fh:
+        for row in csv.DictReader(fh):
+            method=row['method']
+            radius_lines.append(
+                f"| {method} | {float(row['cv_rmse_cm']):.6f} | {int(float(row['increasing_segments']))} | "
+                f"{float(row['overshoot_max_cm']):.6f} | {'是' if method == 'pchip' else '否'} |")
+radius_methods='\n'.join(radius_lines)
 report=r"""# 第四问：收缩药材的移动边界模型与求解
 
-采用径向均匀收缩、长度不变及附录4物性，计算得到烘干时长：
+采用径向均匀收缩、长度不变、附录4物性及第二问阶段边界，计算得到烘干时长：
 
 \[
 \boxed{t_{\mathrm{结束}}={{finish_h}}\ \mathrm h}
 \]
 
-结束时半径为 **{{final_R}} cm**，最湿位置是中心，未舍入含水率为 **{{final_C}} kg/kg**，严格低于0.15。结果对应本文明确列出的收缩和有效传质假设。
+结束时半径为 **{{final_R}} cm**，最湿位置是中心，未舍入含水率为 **{{final_C}} kg/kg**，严格低于0.15。结果对应本文明确列出的收缩、阶段边界和有效传质假设。
 
 ## 1. 文件与输入
 
@@ -70,12 +83,16 @@ R=R(t),
 \]
 计算中把cm统一换成m。插值保留单调收缩趋势。程序提供72 h之后的半径末值保持，但主结果未用到。
 
-环境在0—14400 s使用附件1的分段线性插值，随后沿用第三问基准：
+半径插值方法用留一段交叉验证、单调性和越界检查进行比较。平滑样条虽然交叉验证误差较小，但会产生局部增大或端点越界；因此主情景选择无越界、无反向收缩的PCHIP。诊断明细见 [radius_method_comparison.csv](../../../output/A题深化分析/radius_method_comparison.csv) 及 [图3](../../../output/A题深化分析/figures/03_radius_methods.png)。
+
+{{RADIUS_METHODS}}
+
+环境在0—14400 s使用附件1拟合得到的平滑输入，并沿用第二问的稳定阶段分段：
 \[
-(T_a,C_a)=(50.165^\circ\mathrm C,\ 0.04986\ \mathrm{kg/kg}).
+(T_a,C_a)=(49.934221^\circ\mathrm C,\ 0.04971557\ \mathrm{kg/kg})\quad(t>6330\ \mathrm s).
 \tag{3}
 \]
-14400 s是环境数据终点，不是人为指定的预热/恒温物理分界。长期环境假设的影响见第9节。
+共同阶段点为6030 s，600 s过渡结束后采用上述尾段均值；阶段点不是题面直接给出的常数，敏感性见第9节。
 
 ## 4. 移动边界的控制方程
 
@@ -203,7 +220,7 @@ F^C_{i+1/2}=\xi_{i+1/2}\frac{D_i+D_{i+1}}2
 \tag{10}
 \]
 
-用隐式BDF联立推进，提供热湿交叉导数的稀疏Jacobian。最终采用3200区间，相对/绝对容差分别为\(2\times10^{-10}\)、\(2\times10^{-12}\)，前4 h最大内部步长5 s，之后300 s。在环境与半径记录节点处分段，连续继承末态。
+用隐式BDF联立推进，提供热湿交叉导数的稀疏Jacobian。论文主结果采用300区间，相对/绝对容差分别为\(2\times10^{-10}\)、\(2\times10^{-12}\)，前4 h最大内部步长5 s，之后300 s。在环境与半径记录节点处分段，连续继承末态。
 
 对于固定实际位置\(r_j\)，使用\(\xi_j=r_j/R(t)\)做PCHIP输出。只有\(r_j\le R(t)\)才输出，越界位置留空，不填0、不外推。
 
@@ -259,7 +276,7 @@ t_{\mathrm{结束}}={{finish_s}}\ \mathrm s={{finish_h}}\ \mathrm h.
 
 ## 9. 对照与敏感性
 
-第四问{{finish_h}} h比第三问57.1694 h短{{delta_q3}} h，但两问同时改变几何和物性，不能把差异全部归因于收缩。
+第四问{{finish_h}} h比第三问57.5866 h短{{delta_q3}} h，但两问同时改变几何和物性，不能把差异全部归因于收缩。
 
 同一800区间网格下，各格均为阈值时间：
 
@@ -278,10 +295,12 @@ t_{\mathrm{结束}}={{finish_s}}\ \mathrm s={{finish_h}}\ \mathrm h.
 在A题目录运行：
 
 FENCEpowershell
-python 第四问/solve_q4.py --check-time --comparisons
+python 第四问/solve_q4.py --boundary-mode staged --radius-method pchip --grids 200 300 --check-time --comparisons
 FENCE
 
 依赖NumPy、SciPy、openpyxl、Matplotlib和threadpoolctl。第二问代码仅用于固定半径退化检验和附录3对照，主求解使用本文件内的附录4关系。
+
+若未安装可选的 @oai/artifact-tool，可在A题目录运行 python sync_workbooks_openpyxl.py，用同一份 JSON 数值替换四个附件模板并执行逐单元格验证。
 
 配置了 @oai/artifact-tool 后运行：
 
@@ -293,7 +312,7 @@ FENCE
 """
 values={'finish_h':f"{s['finish_h']:.4f}",'final_R':f"{s['final_R_cm']:.4f}",'final_C':f"{s['final_max_C']:.12f}",
 'event_s':f"{s['event_s']:.6f}",'event_h':f"{s['event_h']:.10f}",'finish_s':f"{s['finish_s']:.4f}",'mean_C':f"{s['final_mean_C']:.8f}",
-'TABLE':tables,'GRID':'\n'.join(grid),'grid_diff':f"{s['grid_checks'][-1]['event_diff_s']:.6f}",
+'TABLE':tables,'GRID':'\n'.join(grid),'RADIUS_METHODS':radius_methods,'grid_diff':f"{s['grid_checks'][-1]['event_diff_s']:.6f}",
 'time_diff':f"{s['time_check']['event_diff_s']:.6f}",'time_C':f"{s['time_check']['max_output_C_diff']:.3e}",
 'jac':f"{s['model_checks']['jacobian_relative_error']:.3e}",'fixed':f"{s['model_checks']['fixed_radius_q2_rhs_max_difference']:.3e}",
 'balance':f"{s['grid_checks'][-1]['balance_error']:.3e}",'delta_q3':f"{s['q3_finish_h']-s['finish_h']:.4f}",'COMPARE':compare,

@@ -6,12 +6,15 @@ import argparse, hashlib, importlib.util, json, sys, time
 import numpy as np
 import openpyxl
 from scipy.integrate import solve_ivp
-from scipy.interpolate import PchipInterpolator
+from scipy.interpolate import PchipInterpolator, Akima1DInterpolator, CubicSpline
 from scipy.sparse import diags,bmat,csr_matrix
 from threadpoolctl import threadpool_limits
 
 sys.dont_write_bytecode=True
 HERE=Path(__file__).resolve().parent
+if str(HERE.parent) not in sys.path:
+    sys.path.insert(0,str(HERE.parent))
+from boundary_stage import build_boundaries
 R0,H,HM,T0,C0=.02,25.,8e-7,28.,2.55
 OUTPUT_R=np.arange(20)*.001
 
@@ -40,23 +43,37 @@ def props4(T,C):
     return rho*cp,k,D,90*cp+rho*2150/(C+1)**2,.20/(C+1)**2,D*.30/C**2,D*3850/K**2
 
 class Model:
-    def __init__(self,n,env,radius,material=props4,fixed_radius=None,linear_radius=False,tail=None,graded=True):
+    def __init__(self,n,env,radius,material=props4,fixed_radius=None,linear_radius=False,tail=None,
+                 graded=True,boundary=None,radius_method=None):
         self.n,self.m=n,n+1
         self.env,self.radius_data,self.material=env,radius,material
         self.fixed_radius,self.linear_radius,self.tail=fixed_radius,linear_radius,tail
+        self.boundary=boundary
+        self.radius_method='linear' if linear_radius and radius_method is None else (radius_method or 'pchip')
         z=np.linspace(0,1,n+1)
         self.x=-np.expm1(-4*z)/(-np.expm1(-4)) if graded else z
         self.faces=(self.x[:-1]+self.x[1:])/2
         self.w=np.diff(np.r_[0.,self.faces,1.]**2)/2
         self.factor=self.faces/np.diff(self.x)
-        self.curve=PchipInterpolator(radius[:,0],radius[:,1],extrapolate=False)
+        if self.radius_method == 'pchip':
+            self.curve=PchipInterpolator(radius[:,0],radius[:,1],extrapolate=False)
+        elif self.radius_method == 'akima':
+            self.curve=Akima1DInterpolator(radius[:,0],radius[:,1],extrapolate=False)
+        elif self.radius_method == 'cubic_spline':
+            self.curve=CubicSpline(radius[:,0],radius[:,1],bc_type='natural',extrapolate=False)
+        elif self.radius_method == 'linear':
+            self.curve=None
+        else:
+            raise ValueError('Unknown radius_method: '+str(self.radius_method))
         self.zero=csr_matrix((1,self.m))
     def R(self,t):
         if self.fixed_radius is not None:
             return np.full_like(np.asarray(t,dtype=float),self.fixed_radius)
         t=np.clip(t,self.radius_data[0,0],self.radius_data[-1,0])
-        return np.interp(t,self.radius_data[:,0],self.radius_data[:,1]) if self.linear_radius else self.curve(t)
+        return np.interp(t,self.radius_data[:,0],self.radius_data[:,1]) if self.radius_method=='linear' else self.curve(t)
     def ambient(self,t):
+        if self.boundary is not None:
+            return float(self.boundary[0](t)),float(self.boundary[1](t))
         if self.tail is not None and t>self.env[-1,0]:
             return self.tail
         return np.interp(t,self.env[:,0],self.env[:,1]),np.interp(t,self.env[:,0],self.env[:,2])
@@ -213,8 +230,15 @@ def main():
     p.add_argument('--grids',type=int,nargs='+',default=[400,800,1600,3200])
     p.add_argument('--check-time',action='store_true')
     p.add_argument('--comparisons',action='store_true')
+    p.add_argument('--boundary-mode',choices=('staged','raw'),default='staged',
+                   help='Use the common detected stage boundary (default) or raw 60 s knots.')
+    p.add_argument('--fit-endpoint-s',type=float,default=None)
+    p.add_argument('--radius-method',choices=('pchip','linear','akima','cubic_spline'),default='pchip')
     a=p.parse_args();a.out.mkdir(parents=True,exist_ok=True)
-    env=read_xlsx(a.root/'附件/附件1.xlsx')
+    raw_env=read_xlsx(a.root/'附件/附件1.xlsx')
+    boundary_t,boundary_c,env,boundary_info=build_boundaries(
+        raw_env,mode=a.boundary_mode,fit_endpoint_s=a.fit_endpoint_s)
+    boundary=None if a.boundary_mode=='raw' else (boundary_t,boundary_c)
     radius=read_xlsx(a.root/'附件/附件2.xlsx');radius[:,1]/=100
     assert radius[0,1]==R0 and np.all(np.diff(radius[:,1])<=0)
     q2=load_q2(a.root)
@@ -222,7 +246,7 @@ def main():
     print('Model checks:',checks,flush=True)
     records=[];prev=None
     for n in a.grids:
-        tick=time.perf_counter();r=simulate(env,radius,n)
+        tick=time.perf_counter();r=simulate(env,radius,n,boundary=boundary,radius_method=a.radius_method)
         row={'N':n,'event_s':r['event_s'],'finish_h':r['finish_h'],'balance_error':r['balance_error'],'elapsed_s':time.perf_counter()-tick}
         if prev is not None:
             count=min(len(prev['t']),len(r['t']))-1
@@ -232,7 +256,8 @@ def main():
         records.append(row);prev=r;print(json.dumps(row),flush=True)
     timecheck={}
     if a.check_time:
-        tight=simulate(env,radius,a.grids[-1],rtol=2e-11,atol=2e-13,max_step=120.)
+        tight=simulate(env,radius,a.grids[-1],rtol=2e-11,atol=2e-13,max_step=120.,boundary=boundary,
+                       radius_method=a.radius_method)
         count=min(len(tight['t']),len(r['t']))-1
         timecheck={'event_diff_s':abs(r['event_s']-tight['event_s']),
                    'max_output_C_diff':float(np.nanmax(abs(r['C'][:count]-tight['C'][:count])))}
@@ -243,14 +268,16 @@ def main():
             ('appendix3_shrinking',{'material':q2.properties}),
             ('linear_radius',{'linear_radius':True}),
             ('tail_50C_0.05',{'tail':(50.,.05)})]:
-            c=simulate(env,radius,800,**opts)
-            comparisons.append({'case':label,'N':800,'event_h':c['event_s']/3600})
+             comparison_boundary=None if 'tail' in opts else boundary
+             c=simulate(env,radius,800,boundary=comparison_boundary,**opts)
+             comparisons.append({'case':label,'N':800,'event_h':c['event_s']/3600})
     table_i=r['table_indices']
     table_C=r['C'][table_i][:,[0,5,10,20]]
     summary={'model':'homogeneous radial shrinkage; Appendix 4; material coordinates',
               'environment_sha256':hashlib.sha256((a.root/'附件/附件1.xlsx').read_bytes()).hexdigest(),
               'radius_sha256':hashlib.sha256((a.root/'附件/附件2.xlsx').read_bytes()).hexdigest(),
-              'R_interpolation':'PCHIP; hold last after 72 h','tail_T':float(env[-1,1]),'tail_C':float(env[-1,2]),
+              'R_interpolation':a.radius_method+'; hold last after 72 h','tail_T':float(env[-1,1]),'tail_C':float(env[-1,2]),
+              'boundary_mode':a.boundary_mode,'boundary_metadata':boundary_info,
               'N':a.grids[-1],'grid':'xi=(1-exp(-4*i/N))/(1-exp(-4))','rtol':2e-10,'atol':2e-12,
               'model_checks':checks,'grid_checks':records,'time_check':timecheck,'comparisons':comparisons,
               'event_s':r['event_s'],'event_h':r['event_s']/3600,'finish_h':r['finish_h'],'finish_s':r['finish_s'],
@@ -262,7 +289,8 @@ def main():
     if q3path.exists():
         q3s=json.loads(q3path.read_text(encoding='utf-8'))
         summary['q3_finish_h']=q3s['finish_h']
-        summary['q3_event_h_N800']=next(v['event_s']/3600 for v in q3s['grid_checks'] if v['N']==800)
+        q3_n800=next((v['event_s']/3600 for v in q3s['grid_checks'] if v['N']==800),None)
+        summary['q3_event_h_N800']=q3_n800
     (a.out/'validation.json').write_text(json.dumps(summary,ensure_ascii=False,indent=2),encoding='utf-8')
     payload={'fixed_r_cm':np.round(OUTPUT_R*100,1).tolist(),'t_s':np.round(r['t'][1:],4).tolist(),
              'R_cm':(r['R'][1:]*100).tolist(),

@@ -1,7 +1,7 @@
 {
-  "time_rows": 3050,
-  "numeric_C_cells": 44061,
-  "outside_blank_cells": 19989,
+  "time_rows": 3072,
+  "numeric_C_cells": 44369,
+  "outside_blank_cells": 20143,
   "all_values_and_masks_match": true,
   "strict_terminal_check": true,
   "surface_column_present": true,
