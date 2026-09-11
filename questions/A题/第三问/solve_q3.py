@@ -25,15 +25,23 @@ def load_q2(root):
 
 
 def integrate(q2, env, n, rtol=2e-10, atol=2e-12, max_step=300., tail=None):
+    return _integrate(q2, env, n, rtol=rtol, atol=atol, max_step=max_step, tail=tail,
+                      boundary=None)
+
+
+def _integrate(q2, env, n, rtol=2e-10, atol=2e-12, max_step=300., tail=None,
+               boundary=None):
     class Model(q2.CoupledModel):
         def __init__(self,n,env):
-            super().__init__(n,env)
+            super().__init__(n,env,boundary=boundary)
             x=np.linspace(0,1,n+1)
             self.r=q2.R*(-np.expm1(-4*x))/(-np.expm1(-4))
             self.faces=(self.r[:-1]+self.r[1:])/2
             self.w=np.diff(np.r_[0.,self.faces,q2.R]**2)/2
             self.factor=self.faces/np.diff(self.r)
         def ambient(self, t):
+            if boundary is not None:
+                return float(boundary[0](t)), float(boundary[1](t))
             if tail is not None and t > env[-1, 0]:
                 return tail
             return super().ambient(t)
@@ -142,14 +150,23 @@ def main():
     parser.add_argument('--grids',type=int,nargs='+',default=[400,800,1600,3200])
     parser.add_argument('--check-time',action='store_true')
     parser.add_argument('--sensitivity',action='store_true')
+    parser.add_argument('--boundary-mode',choices=('staged','raw'),default='staged',
+                        help='Use the common detected stage boundary (default) or raw 60 s knots.')
+    parser.add_argument('--fit-endpoint-s',type=float,default=None)
     args=parser.parse_args()
     args.out.mkdir(parents=True,exist_ok=True)
     q2=load_q2(args.root)
     env=q2.read_environment()
+    if str(args.root) not in sys.path:
+        sys.path.insert(0,str(args.root))
+    from boundary_stage import build_boundaries
+    boundary_t,boundary_c,solver_env,boundary_info=build_boundaries(
+        env,mode=args.boundary_mode,fit_endpoint_s=args.fit_endpoint_s)
+    boundary=None if args.boundary_mode=='raw' else (boundary_t,boundary_c)
     records,prev=[],None
     for n in args.grids:
         start=time.perf_counter()
-        result=integrate(q2,env,n)
+        result=_integrate(q2,solver_env,n,boundary=boundary)
         rec={'N':n,'event_s':result['event_s'],'finish_h':result['finish_h'],
              'balance_error':result['balance_error'],'elapsed_s':time.perf_counter()-start}
         if prev is not None:
@@ -161,18 +178,21 @@ def main():
         print(json.dumps(rec),flush=True)
     checks={}
     if args.check_time:
-        tight=integrate(q2,env,args.grids[-1],rtol=2e-11,atol=2e-13,max_step=120.)
+        tight=_integrate(q2,solver_env,args.grids[-1],rtol=2e-11,atol=2e-13,max_step=120.,
+                         boundary=boundary)
         count=min(len(tight['t']),len(result['t']))-1
         checks={'event_diff_s':abs(tight['event_s']-result['event_s']),
                 'max_C_diff':float(np.max(abs(tight['C'][:count]-result['C'][:count])))}
     sensitivity=[]
     if args.sensitivity:
         for name,tail in [('50C_0.05',(50.,.05)),('last_hour_mean',tuple(env[env[:,0]>=10800,1:].mean(axis=0)))]:
-            test=integrate(q2,env,800,tail=tail)
-            baseline=next((r['event_s'] for r in records if r['N']==800),None)
+            sensitivity_grid=args.grids[-1]
+            test=_integrate(q2,solver_env,sensitivity_grid,tail=tail)
+            baseline=next((r['event_s'] for r in records if r['N']==sensitivity_grid),None)
             sensitivity.append({'case':name,'T_tail':float(tail[0]),'C_tail':float(tail[1]),
+                                'sensitivity_grid':sensitivity_grid,
                                 'event_h':test['event_s']/3600,
-                                'delta_h_at_N800':None if baseline is None else (test['event_s']-baseline)/3600})
+                                'delta_h_at_grid':None if baseline is None else (test['event_s']-baseline)/3600})
     q2_diff={}
     q2data=args.root/'第二问/result2_full_precision.npz'
     if q2data.exists():
@@ -186,7 +206,8 @@ def main():
              'input_sha256':hashlib.sha256((args.root/'附件/附件1.xlsx').read_bytes()).hexdigest(),
              'q2_code_sha256':hashlib.sha256((args.root/'第二问/solve_q2.py').read_bytes()).hexdigest(),
              'N':args.grids[-1],'rtol':2e-10,'atol':2e-12,'max_step_after_4h_s':300.,
-             'tail_T':float(env[-1,1]),'tail_C':float(env[-1,2]),
+             'tail_T':float(solver_env[-1,1]),'tail_C':float(solver_env[-1,2]),
+             'boundary_mode':args.boundary_mode,'boundary_metadata':boundary_info,
              'event_s':result['event_s'],'event_h':result['event_s']/3600,
              'finish_s':result['finish_s'],'finish_h':result['finish_h'],
              'final_max_C':result['final_max_C'],'final_max_r_cm':result['final_max_r_cm'],

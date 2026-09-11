@@ -7,6 +7,7 @@ from pathlib import Path
 import argparse
 import hashlib
 import json
+import sys
 import time
 
 import numpy as np
@@ -17,6 +18,9 @@ from threadpoolctl import threadpool_limits
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT = Path(__file__).resolve().parent
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+from boundary_stage import build_boundaries
 R, H, HM = 0.02, 25.0, 8e-7
 T0, C0 = 28.0, 2.55
 END_TIME = 10800
@@ -57,9 +61,10 @@ def properties(T, C):
 
 
 class CoupledModel:
-    def __init__(self, n, env, tail='hold_last'):
+    def __init__(self, n, env, tail='hold_last', boundary=None):
         assert n % 20 == 0
         self.n, self.m, self.env, self.tail = n, n + 1, env, tail
+        self.boundary = boundary
         self.r = np.linspace(0, R, n + 1)
         self.dr = R / n
         self.faces = (self.r[:-1] + self.r[1:]) / 2
@@ -70,6 +75,8 @@ class CoupledModel:
         self.zero_row = csr_matrix((1, self.m))
 
     def ambient(self, t):
+        if self.boundary is not None:
+            return float(self.boundary[0](t)), float(self.boundary[1](t))
         if t > self.env[-1, 0] and self.tail != 'hold_last':
             raise ValueError('Environment data exhausted. Explicitly select a tail assumption.')
         # np.interp holds the final observation outside the provided time range.
@@ -130,8 +137,9 @@ def check_jacobian(env):
     return max(errors)
 
 
-def solve_model(n, env, rtol=2e-10, atol=2e-12, max_step=5.0, end_time=END_TIME):
-    model = CoupledModel(n, env)
+def solve_model(n, env, rtol=2e-10, atol=2e-12, max_step=5.0, end_time=END_TIME,
+                boundary=None):
+    model = CoupledModel(n, env, boundary=boundary)
     m, w, area = model.m, model.w, model.area
     times = np.arange(end_time + 1, dtype=float)
     indices = np.arange(21) * (n // 20)
@@ -215,14 +223,21 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--grids', type=int, nargs='+', default=[800, 1600, 3200, 6400])
     parser.add_argument('--check-time', action='store_true')
+    parser.add_argument('--boundary-mode', choices=('staged', 'raw'), default='staged',
+                        help='Use the detected smooth constant-stage boundary (default) or raw 60 s knots.')
+    parser.add_argument('--fit-endpoint-s', type=float, default=None,
+                        help='Endpoint for the initial-value-fixed fit; default is the last Attachment-1 record.')
     args = parser.parse_args()
-    env = read_environment()
+    raw_env = read_environment()
+    boundary_t, boundary_c, env, boundary_info = build_boundaries(
+        raw_env, mode=args.boundary_mode, fit_endpoint_s=args.fit_endpoint_s)
+    boundary = None if args.boundary_mode == 'raw' else (boundary_t, boundary_c)
     jac_error = check_jacobian(env)
     print('Jacobian complex-step relative error:', jac_error, flush=True)
     convergence, previous = [], None
     for n in args.grids:
         start = time.perf_counter()
-        result = solve_model(n, env)
+        result = solve_model(n, env, boundary=boundary)
         record = {'intervals': n, 'dr_m': R/n,
                   'moisture_balance_error': result['moisture_balance_error'],
                   'heat_rate_balance_error': result['heat_rate_balance_error']}
@@ -239,7 +254,8 @@ def main():
         print(json.dumps(record), flush=True)
     time_check = {}
     if args.check_time:
-        tight = solve_model(args.grids[-1], env, rtol=2e-11, atol=2e-13, max_step=2.0)
+        tight = solve_model(args.grids[-1], env, rtol=2e-11, atol=2e-13, max_step=2.0,
+                            boundary=boundary)
         time_check = {key: float(np.max(np.abs(result[key]-tight[key]))) for key in ['T', 'C']}
         print('Time convergence:', time_check, flush=True)
     assert np.min(result['T']) >= T0-1e-8
@@ -260,8 +276,17 @@ def main():
                'input_sha256': hashlib.sha256((ROOT/'附件/附件1.xlsx').read_bytes()).hexdigest(),
                'duration_s': END_TIME, 'grid_intervals': args.grids[-1],
                'rtol': 2e-10, 'atol': 2e-12, 'max_step_s': 5,
-               'interpolation': 'piecewise linear at original 60 s knots',
-               'tail_assumption': 'hold final observation after 14400 s; not used for first 3 h',
+               'interpolation': ('detected stage boundary: stretched exponential before the common split, '
+                                 '600 s blend, then measured tail mean'
+                                 if args.boundary_mode == 'staged' else
+                                 'piecewise linear at original 60 s knots'),
+               'boundary_mode': args.boundary_mode,
+               'boundary_metadata': boundary_info,
+               'raw_environment_sha256': hashlib.sha256((ROOT/'附件/附件1.xlsx').read_bytes()).hexdigest(),
+               'tail_assumption': ('hold the detected tail mean after the 600 s transition; '
+                                   'the phase point and tail mean are recorded in boundary_metadata'
+                                   if args.boundary_mode == 'staged' else
+                                   'hold final observation after 14400 s'),
                'H_W_m2_K': H, 'HM_m_s': HM, 'jacobian_relative_error': jac_error,
                'convergence': convergence, 'time_check': time_check,
                'initial_properties': {key: float(value[0]) for key, value in zip(['rho_cp', 'k', 'D'], initial_props[:3])},
