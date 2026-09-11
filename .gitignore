@@ -174,3 +174,5 @@ build/
 # 原始题目压缩包（本条覆盖上面的 *.zip 规则，使其保留入库）
 !CUMCM*.zip
 !questions/**/附件*/*.zip
+
+~$*
