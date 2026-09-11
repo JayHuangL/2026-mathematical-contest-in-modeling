@@ -20,8 +20,8 @@ FIGURES = PACKAGE / "figures"
 
 # Boundary-window contract for the submitted four-question package.
 # Q1 is an early-time identification problem; Q2--Q4 share the full
-# Attachment-1 fit and only replace it with the detected constant tail after
-# the common stability split.
+# Attachment-1 fit and replace temperature/moisture with their own constant
+# tails after independently detected stability transitions.
 Q1_FIT_ENDPOINT_S = 1800.0
 FULL_ATTACHMENT_FIT_ENDPOINT_S = 14400.0
 
@@ -34,15 +34,16 @@ def run(script: Path, *args: str) -> None:
 
 def copy_main_figures() -> None:
     mapping = {
-        "q1": "第一问结果图.png",
-        "q2": "第二问结果图.png",
-        "q3": "第三问结果图.png",
-        "q4": "第四问结果图.png",
+        "q1": ["第一问结果图.png"],
+        "q2": ["第二问结果图.png", "边界独立分界图.png"],
+        "q3": ["第三问结果图.png"],
+        "q4": ["第四问结果图.png"],
     }
-    for question, name in mapping.items():
-        source = RESULTS / question / name
-        if source.exists():
-            shutil.copy2(source, FIGURES / question / name)
+    for question, names in mapping.items():
+        for name in names:
+            source = RESULTS / question / name
+            if source.exists():
+                shutil.copy2(source, FIGURES / question / name)
 
 
 def main() -> None:

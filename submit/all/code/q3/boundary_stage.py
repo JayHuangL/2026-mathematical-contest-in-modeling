@@ -132,8 +132,9 @@ def build_boundaries(environment: np.ndarray, mode: str = "staged",
 
     ``mode='raw'`` reproduces the original piecewise-linear input.  The
     default ``staged`` mode selects the stretched-exponential family, detects
-    temperature and moisture stable times independently, uses their mean as a
-    common split, and blends to the measured tail mean over ``transition_s``.
+    temperature and moisture stable times independently, and gives each
+    boundary its own transition interval and measured tail mean.  The two
+    stages are therefore not replaced by their arithmetic mean.
     """
     env = np.asarray(environment, dtype=float)
     t = env[:, 0]
@@ -148,12 +149,13 @@ def build_boundaries(environment: np.ndarray, mode: str = "staged",
     curve_c, fit_c = fit_stretched(t, env[:, 2], endpoint)
     phase_t = detect_stable_phase(t, env[:, 1])
     phase_c = detect_stable_phase(t, env[:, 2])
-    phase_s = 0.5 * (phase_t["phase_s"] + phase_c["phase_s"])
-    left, right = phase_s - transition_s / 2.0, phase_s + transition_s / 2.0
-    plateau_t = float(np.mean(env[t >= phase_s, 1]))
-    plateau_c = float(np.mean(env[t >= phase_s, 2]))
+    center_t, center_c = phase_t["phase_s"], phase_c["phase_s"]
+    left_t, right_t = center_t - transition_s / 2.0, center_t + transition_s / 2.0
+    left_c, right_c = center_c - transition_s / 2.0, center_c + transition_s / 2.0
+    plateau_t = float(np.mean(env[t >= center_t, 1]))
+    plateau_c = float(np.mean(env[t >= center_c, 2]))
 
-    def stage(curve, plateau, query):
+    def stage(curve, plateau, left, right, query):
         scalar = np.ndim(query) == 0
         q = np.asarray(query, dtype=float)
         result = np.asarray(curve(np.clip(q, t[0], t[-1])), dtype=float)
@@ -164,16 +166,24 @@ def build_boundaries(environment: np.ndarray, mode: str = "staged",
         result[blend] = (1.0 - alpha) * result[blend] + alpha * plateau
         return float(result) if scalar else result
 
-    bt = lambda q: stage(curve_t, plateau_t, q)
-    bc = lambda q: stage(curve_c, plateau_c, q)
+    bt = lambda q: stage(curve_t, plateau_t, left_t, right_t, q)
+    bc = lambda q: stage(curve_c, plateau_c, left_c, right_c, q)
     staged_env = np.c_[t, bt(t), bc(t)]
     metadata = {
-        "mode": "stretched_exp_plus_constant_stage",
+        "mode": "stretched_exp_plus_independent_constant_stages",
         "fit_endpoint_s": endpoint,
         "transition_s": float(transition_s),
         "phase_temperature": phase_t,
         "phase_moisture": phase_c,
-        "phase_common_s": float(phase_s),
+        "phase_gap_s": float(center_c - center_t),
+        "transition_temperature": {
+            "center_s": float(center_t), "left_s": float(left_t),
+            "right_s": float(right_t), "width_s": float(transition_s)
+        },
+        "transition_moisture": {
+            "center_s": float(center_c), "left_s": float(left_c),
+            "right_s": float(right_c), "width_s": float(transition_s)
+        },
         "plateau_temperature": plateau_t,
         "plateau_moisture": plateau_c,
         "fit_temperature": fit_t,

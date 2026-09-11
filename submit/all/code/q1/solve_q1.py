@@ -331,7 +331,7 @@ def write_sensitivity_report(sensitivity):
         '', '## 5. 解读边界', '',
         '本表中的“linear_input”直接量化原分段线性输入与主拟合输入的差异；两个拟合窗情景量化拟合窗口选择的不确定性。',
         '对流和扩散率情景只作一因子扰动，不能等同于参数的统计置信区间。潜热、气固平衡换算和轴向传递仍未被识别，因此不应把本表当作完整的物理误差上界。',
-        '六类候选边界（分段线性、PCHIP、Akima、自然三次样条、平滑样条、初值固定的拉伸指数模型）的 blocked hold-out 指标、粗糙度和越界检查见 [boundary_cv.csv](boundary_cv.csv)。温度序列中拉伸指数模型的 blocked hold-out RMSE 最低；含水率序列中自然三次样条 RMSE 略低，但拉伸指数模型的粗糙度约为 7.30×10^-10，并由正参数保证单调性、没有区间外越界。因此综合误差、平滑性、单调性、越界检查和统一函数族的可解释性，主模型选择初值固定的拉伸指数模型。',
+        '六类候选边界的 blocked hold-out 指标见 [boundary_cv.csv](boundary_cv.csv)。粗糙度按验证区间 721 个等间距曲线点的平均绝对二阶差分计算。温度序列中拉伸指数模型的 RMSE 最低；含水率序列中自然三次样条 RMSE 略低，但其粗糙度约为拉伸指数模型的 69.5 倍。平滑样条的粗糙度略低于拉伸指数模型。综合 RMSE、粗糙度、平滑性和统一函数族的可解释性，主模型选择初值固定的拉伸指数模型。',
         '拟合曲线、候选方法和拟合终点的可视化见 [边界方法与阶段图](figures/01_boundary_methods_and_phase.png)、[拟合终点比较图](figures/02_endpoint_comparison.png)、[模型输出图](figures/05_model_outputs.png) 和 [敏感性图](figures/04_model_sensitivity.png)。',
         '',
     ]

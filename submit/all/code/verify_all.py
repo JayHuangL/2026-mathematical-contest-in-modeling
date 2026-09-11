@@ -49,12 +49,12 @@ def main() -> None:
     checks = {
         "q1": _payload_check("q1", 1800, "T"),
         "q2": _payload_check("q2", 10800, "T"),
-        "q3": _payload_check("q3", 3456),
-        "q4": _payload_check("q4", 3072),
+        "q3": _payload_check("q3", 3461),
+        "q4": _payload_check("q4", 3077),
         "q1_workbook": _workbook_shape(RESULTS / "q1" / "result1.xlsx", ["温度", "水分浓度"], 1800, 22),
         "q2_workbook": _workbook_shape(RESULTS / "q2" / "result2.xlsx", ["温度", "水分浓度"], 10800, 22),
-        "q3_workbook": _workbook_shape(RESULTS / "q3" / "result3.xlsx", ["Sheet1"], 3456, 22),
-        "q4_workbook": _workbook_shape(RESULTS / "q4" / "result4.xlsx", ["Sheet1"], 3072, 22),
+        "q3_workbook": _workbook_shape(RESULTS / "q3" / "result3.xlsx", ["Sheet1"], 3461, 22),
+        "q4_workbook": _workbook_shape(RESULTS / "q4" / "result4.xlsx", ["Sheet1"], 3077, 22),
     }
     for question, validation_key in [("q1", "selected_boundary_method"), ("q2", "model"), ("q3", "event_h"), ("q4", "event_h")]:
         validation = json.loads((RESULTS / question / "validation.json").read_text(encoding="utf-8"))

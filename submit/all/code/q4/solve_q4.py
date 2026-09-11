@@ -235,7 +235,7 @@ def main():
     p.add_argument('--check-time',action='store_true')
     p.add_argument('--comparisons',action='store_true')
     p.add_argument('--boundary-mode',choices=('staged','raw'),default='staged',
-                   help='Use the common detected stage boundary (default) or raw 60 s knots.')
+                   help='Use independent detected temperature/moisture stage boundaries (default) or raw 60 s knots.')
     p.add_argument('--fit-endpoint-s',type=float,default=None)
     p.add_argument('--radius-method',choices=('pchip','linear','akima','cubic_spline'),default='pchip')
     a=p.parse_args();a.out.mkdir(parents=True,exist_ok=True)

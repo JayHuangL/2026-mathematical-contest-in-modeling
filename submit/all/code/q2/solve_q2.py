@@ -223,6 +223,38 @@ def make_figures(result, env):
     plt.close(fig)
 
 
+def make_boundary_stage_figure(raw_env, boundary_t, boundary_c, boundary_info):
+    """Plot the two independently detected environmental transitions."""
+    import matplotlib
+    matplotlib.use('Agg')
+    import matplotlib.pyplot as plt
+    plt.rcParams.update({'font.sans-serif': ['Microsoft YaHei', 'SimHei', 'DejaVu Sans'],
+                         'axes.unicode_minus': False, 'font.size': 10})
+    metadata = boundary_info
+    tt = metadata['transition_temperature']
+    tc = metadata['transition_moisture']
+    grid = np.linspace(raw_env[0, 0], raw_env[-1, 0], 1200)
+    fig, axes = plt.subplots(2, 1, figsize=(11, 7), sharex=True, constrained_layout=True)
+    specs = [
+        (axes[0], 1, boundary_t, tt, '烘房温度 / °C', '温度稳定点 5280 s'),
+        (axes[1], 2, boundary_c, tc, '环境水分参考量 / (kg/kg)', '水分稳定点 6780 s'),
+    ]
+    for ax, column, boundary, transition, ylabel, label in specs:
+        ax.scatter(raw_env[:, 0], raw_env[:, column], s=10, color='black', alpha=0.55,
+                   label='附件1观测点')
+        ax.plot(grid, boundary(grid), color='#1f77b4', lw=2, label='分阶段连续边界')
+        ax.axvspan(transition['left_s'], transition['right_s'], color='#ffbf00', alpha=0.22,
+                    label='该变量600 s过渡区')
+        ax.axvline(transition['center_s'], color='#d62728', ls='--', lw=1.2, label=label)
+        ax.set_ylabel(ylabel)
+        ax.grid(alpha=0.2)
+        ax.legend(fontsize=8, ncol=3)
+    axes[1].set_xlabel('时间 / s')
+    fig.suptitle('温度与环境水分的独立稳定分界处理（相差1500 s）')
+    fig.savefig(OUT/'边界独立分界图.png', dpi=180)
+    plt.close(fig)
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--grids', type=int, nargs='+', default=[800, 1600, 3200, 6400])
@@ -280,8 +312,9 @@ def main():
                'input_sha256': hashlib.sha256((DATA/'附件1.xlsx').read_bytes()).hexdigest(),
                'duration_s': END_TIME, 'grid_intervals': args.grids[-1],
                'rtol': 2e-10, 'atol': 2e-12, 'max_step_s': 5,
-               'interpolation': ('detected stage boundary: stretched exponential before the common split, '
-                                 '600 s blend, then measured tail mean'
+               'interpolation': ('detected independent stage boundaries: stretched exponential before '
+                                 'the temperature/moisture-specific split, 600 s blends, then separate '
+                                 'measured tail means'
                                  if args.boundary_mode == 'staged' else
                                  'piecewise linear at original 60 s knots'),
                'boundary_mode': args.boundary_mode,
@@ -310,6 +343,8 @@ def main():
         lines += ['']
     (OUT/'结果表.md').write_text('\n'.join(lines), encoding='utf-8')
     make_figures(result, env)
+    if args.boundary_mode == 'staged':
+        make_boundary_stage_figure(raw_env, boundary_t, boundary_c, boundary_info)
     print(json.dumps(summary, ensure_ascii=False, indent=2), flush=True)
 
 
