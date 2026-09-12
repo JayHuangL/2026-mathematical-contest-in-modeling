@@ -11,6 +11,10 @@
 | `02_Eymard_Gallouet_Herbin_2000_Finite_Volume_Methods.pdf` | 有限体积法、控制体积分、界面通量与局部守恒 | 径向有限体积离散、共享界面通量和离散守恒 |
 | `03_Fritsch_Butland_1984_PCHIP.pdf` | 局部单调、保形分段三次 Hermite 插值 | 半径序列与非均匀网格输出采用 PCHIP，避免普通三次样条过冲 |
 | `04_Tuly_et_al_2023_Jackfruit_Drying_Shrinkage.pdf` | 考虑收缩的热质传递干燥模型及数值模拟 | 热湿耦合、含水率扩散、对流边界以及收缩对干燥过程的影响 |
+| `06_Martins_Sturdza_Alonso_2001_Complex_Step.pdf` | 复步长求导及其与自动微分的关系 | 解析 Jacobian 的复步长精度核验及其避免差分相消误差的依据 |
+| `07_Hindmarsh_et_al_2005_SUNDIALS.pdf` | 大规模刚性 ODE/DAE、线性多步法与 Newton–Krylov 框架 | 刚性半离散系统、隐式迭代和稀疏线性代数的软件方法背景 |
+| `08_Virtanen_et_al_2020_SciPy_1_0.pdf` | SciPy 科学计算库的算法与软件体系 | 本文使用 SciPy 数值积分和插值工具的软件引用 |
+| `09_Kumar_et_al_2022_Drying_Modeling_Review.pdf` | 果蔬干燥数学模型、热质传递与计算方法综述 | 干燥建模的一般研究背景、模型分类及热湿耦合依据 |
 
 ## 与本文写法的关系
 
@@ -19,6 +23,9 @@
 3. Eymard 等人的综述强调有限体积法从控制体守恒出发，通过界面通量连接相邻控制体。这与本文圆柱径向权重和共享通量的写法一致。
 4. Fritsch–Butland 方法是 SciPy `PchipInterpolator` 内部导数选择的重要理论来源，适合支撑“保形、避免非物理过冲”的表述。
 5. Tuly 等人的开放获取论文可作为干燥收缩模型的应用文献。本文的模型更简化，因此引用时宜表述为“已有研究常通过耦合热质传递方程分析收缩对干燥过程的影响”，不应写成本文完整复现了其多物理模型。
+6. Martins 等人的资料用于支撑复步长检验。复步长法没有实数有限差分中的相减运算，因此能在很小扰动量下避免相消误差；它在本文中是 Jacobian 的独立核验方法，不是时间积分方法。
+7. Virtanen 等人的论文适合在“计算工具”处引用；BDF 的具体算法描述仍应优先引用 Shampine–Reichelt，而不是只引用 SciPy 总览论文。
+8. Akter 等人的综述适合支撑研究背景和干燥模型分类；具体控制方程仍应引用传热传质理论或与本文结构更接近的应用论文。
 
 ## 在线来源
 
@@ -28,5 +35,9 @@
 - Fritsch & Butland: <https://doi.org/10.1137/0905021>
 - Tuly et al.: <https://doi.org/10.3390/en16114461>
 - SciPy BDF 官方说明（网页，未下载）：<https://docs.scipy.org/doc/scipy/reference/generated/scipy.integrate.BDF.html>
+- Martins, Sturdza & Alonso: <https://mdolab.engin.umich.edu/bibliography/Martins2003a>
+- Hindmarsh et al.: <https://doi.org/10.1145/1089014.1089020>
+- Virtanen et al.: <https://doi.org/10.1038/s41592-019-0686-2>
+- Akter et al.: <https://doi.org/10.1155/2022/6195257>
 
 完整 BibTeX 见 `references.bib`。

@@ -1,0 +1,44 @@
+{
+  "cases": 88,
+  "baseline_reproduction": {
+    "q1": {
+      "max_T_difference": 1.9845629850578916e-07,
+      "max_C_difference": 4.375047070404037e-06,
+      "note": "q1 N1600 vs formal N6400"
+    },
+    "q2": {
+      "max_T_difference": 5.057907372929549e-07,
+      "max_C_difference": 2.297160550668309e-08,
+      "note": "q2 matched N400"
+    },
+    "q3": {
+      "N300_event_difference_s": 0.0024988411723825266
+    },
+    "q4": {
+      "N300_event_difference_s": 0.013944611890792658
+    }
+  },
+  "reference_checks": {
+    "q3": {
+      "A_vs_K_N3200_s": 0.0168891284062056,
+      "K_N1600_vs3200_s": 0.0016939830146611712,
+      "A_N1600_vs3200_s": 0.0523119276408579,
+      "tolerance_difference_N1600_s": {
+        "arithmetic": 1.8597040707390988e-05,
+        "kirchhoff": 2.0152506863269082e-05
+      }
+    },
+    "q4": {
+      "A_vs_K_N3200_s": 0.0010702573291609951,
+      "K_N1600_vs3200_s": 0.0031034768227300447,
+      "A_N1600_vs3200_s": 0.006307661183768687,
+      "tolerance_difference_N1600_s": {
+        "arithmetic": 4.9016944103641436e-05,
+        "kirchhoff": 0.0026765231183389915
+      }
+    }
+  },
+  "max_mass_residual": 9.769962616701378e-15,
+  "max_gauss_relative_difference": 9.53597035922587e-16,
+  "scope_audit_unchanged": true
+}
