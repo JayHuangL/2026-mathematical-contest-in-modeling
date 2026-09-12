@@ -272,7 +272,8 @@ def main():
     p.add_argument('--comparisons',action='store_true')
     p.add_argument('--boundary-mode',choices=('staged','raw'),default='staged',
                    help='Use independent detected temperature/moisture stage boundaries (default) or raw 60 s knots.')
-    p.add_argument('--fit-endpoint-s',type=float,default=None)
+    p.add_argument('--fit-endpoint-s',type=float,default=None,
+                   help='Optional common fit endpoint; default is each variable transition point.')
     p.add_argument('--radius-method',choices=('pchip','linear','akima','cubic_spline'),default='pchip')
     a=p.parse_args();a.out.mkdir(parents=True,exist_ok=True)
     raw_env=read_xlsx(PACKAGE/'data'/'附件1.xlsx')

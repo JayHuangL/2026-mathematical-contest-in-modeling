@@ -184,7 +184,8 @@ def main():
     parser.add_argument('--sensitivity',action='store_true')
     parser.add_argument('--boundary-mode',choices=('staged','raw'),default='staged',
                         help='Use independent detected temperature/moisture stage boundaries (default) or raw 60 s knots.')
-    parser.add_argument('--fit-endpoint-s',type=float,default=None)
+    parser.add_argument('--fit-endpoint-s',type=float,default=None,
+                        help='Optional common fit endpoint; default is each variable transition point.')
     args=parser.parse_args()
     args.out.mkdir(parents=True,exist_ok=True)
     q2=load_q2(args.root)

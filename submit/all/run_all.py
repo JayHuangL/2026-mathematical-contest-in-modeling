@@ -19,11 +19,11 @@ RESULTS = PACKAGE / "results"
 FIGURES = PACKAGE / "figures"
 
 # Boundary-window contract for the submitted four-question package.
-# Q1 is an early-time identification problem; Q2--Q4 share the full
-# Attachment-1 fit and replace temperature/moisture with their own constant
-# tails after independently detected stability transitions.
+# Q1 is an early-time identification problem.  Q2--Q4 use the complete
+# Attachment-1 record to detect independent stability transitions and estimate
+# tail means, but fit each stretched-exponential branch only up to its own
+# transition point before adding a 600 s blend and constant tail.
 Q1_FIT_ENDPOINT_S = 1800.0
-FULL_ATTACHMENT_FIT_ENDPOINT_S = 14400.0
 
 
 def run(script: Path, *args: str) -> None:
@@ -36,7 +36,7 @@ def copy_main_figures() -> None:
     mapping = {
         "q1": ["第一问结果图.png", "01_raw_environment_scatter.png",
                "02_selected_stretched_exp_fit.png"],
-        "q2": ["第二问结果图.png", "边界独立分界图.png"],
+        "q2": ["第二问结果图.png", "边界独立分界图.png", "分段边界整体拟合图.png"],
         "q3": ["第三问结果图.png"],
         "q4": ["第四问结果图.png"],
     }
@@ -71,15 +71,12 @@ def main() -> None:
         "--fit-window-s", str(int(Q1_FIT_ENDPOINT_S)), *common, *q1_extra)
     run(CODE / "q1" / "export_result1.py")
     run(CODE / "q2" / "solve_q2.py", "--grids", *map(str, q2_grids),
-        "--boundary-mode", "staged",
-        "--fit-endpoint-s", str(int(FULL_ATTACHMENT_FIT_ENDPOINT_S)), *common)
+        "--boundary-mode", "staged", *common)
     run(CODE / "q2" / "export_result2.py")
     run(CODE / "q3" / "solve_q3.py", "--grids", *map(str, q3_grids),
-        "--boundary-mode", "staged",
-        "--fit-endpoint-s", str(int(FULL_ATTACHMENT_FIT_ENDPOINT_S)), *common, *q3_extra)
+        "--boundary-mode", "staged", *common, *q3_extra)
     run(CODE / "q4" / "solve_q4.py", "--grids", *map(str, q4_grids),
-        "--boundary-mode", "staged",
-        "--fit-endpoint-s", str(int(FULL_ATTACHMENT_FIT_ENDPOINT_S)), *common, *q4_extra)
+        "--boundary-mode", "staged", *common, *q4_extra)
     run(CODE / "build_workbooks.py")
     copy_main_figures()
     run(CODE / "verify_all.py")

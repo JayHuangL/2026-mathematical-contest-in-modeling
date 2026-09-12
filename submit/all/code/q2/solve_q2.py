@@ -13,6 +13,7 @@ import time
 import numpy as np
 import openpyxl
 from scipy.integrate import solve_ivp
+from scipy.signal import savgol_filter
 from scipy.sparse import diags, bmat, csr_matrix
 from threadpoolctl import threadpool_limits
 
@@ -241,35 +242,82 @@ def make_figures(result, env):
     plt.close(fig)
 
 
-def make_boundary_stage_figure(raw_env, boundary_t, boundary_c, boundary_info):
-    """Plot the two independently detected environmental transitions."""
+def make_boundary_stage_figure(raw_env, boundary_info):
+    """Show how the two stable points are detected from smoothed data."""
     import matplotlib
     matplotlib.use('Agg')
     import matplotlib.pyplot as plt
     plt.rcParams.update({'font.sans-serif': ['Microsoft YaHei', 'SimHei', 'DejaVu Sans'],
                          'axes.unicode_minus': False, 'font.size': 10})
-    metadata = boundary_info
-    tt = metadata['transition_temperature']
-    tc = metadata['transition_moisture']
-    grid = np.linspace(raw_env[0, 0], raw_env[-1, 0], 1200)
-    fig, axes = plt.subplots(2, 1, figsize=(11, 7), sharex=True, constrained_layout=True)
     specs = [
-        (axes[0], 1, boundary_t, tt, '烘房温度 / °C', '温度稳定点 5280 s'),
-        (axes[1], 2, boundary_c, tc, '环境水分参考量 / (kg/kg)', '水分稳定点 6780 s'),
+        (1, boundary_info['phase_temperature'], '烘房温度 / °C', '#9b1c1f'),
+        (2, boundary_info['phase_moisture'], '环境水分浓度 / (kg/kg)', '#2166ac'),
     ]
-    for ax, column, boundary, transition, ylabel, label in specs:
-        ax.scatter(raw_env[:, 0], raw_env[:, column], s=10, color='black', alpha=0.55,
-                   label='附件1观测点')
-        ax.plot(grid, boundary(grid), color='#1f77b4', lw=2, label='分阶段连续边界')
-        ax.axvspan(transition['left_s'], transition['right_s'], color='#ffbf00', alpha=0.22,
-                    label='该变量600 s过渡区')
-        ax.axvline(transition['center_s'], color='#d62728', ls='--', lw=1.2, label=label)
+    fig, axes = plt.subplots(2, 1, figsize=(11, 7), sharex=True, constrained_layout=True)
+    for ax, (column, phase, ylabel, color) in zip(axes, specs):
+        y = raw_env[:, column]
+        smooth_window = int(phase['smoothing_window_points'])
+        smoothed = savgol_filter(y, smooth_window, 2, mode='interp')
+        ax.scatter(raw_env[:, 0], y, s=10, color=color, alpha=0.45,
+                   linewidths=0, label='原始观测散点')
+        ax.plot(raw_env[:, 0], smoothed, color='#444444', lw=1.5,
+                label=f'{smooth_window}点 Savitzky–Golay 平滑')
+        for index, window in enumerate(phase['windows']):
+            ax.axvspan(window['start_s'], window['start_s'] + phase['window_s'],
+                       color='#f0a202', alpha=0.10 if index else 0.24,
+                       label='连续稳定窗口' if index == 0 else None)
+        ax.axvline(phase['phase_s'], color='#d62728', ls='--', lw=1.3,
+                    label=f"判定分界点 {phase['phase_s']:.0f} s")
+        ax.text(0.015, 0.08,
+                f"极差阈值={phase['range_tol']:.3g}\n斜率阈值={phase['slope_tol']:.3g}",
+                transform=ax.transAxes, va='bottom',
+                bbox={'facecolor': 'white', 'alpha': 0.82, 'edgecolor': '0.7'})
         ax.set_ylabel(ylabel)
         ax.grid(alpha=0.2)
-        ax.legend(fontsize=8, ncol=3)
+        ax.legend(fontsize=8, ncol=3, loc='best')
     axes[1].set_xlabel('时间 / s')
-    fig.suptitle('温度与环境水分的独立稳定分界处理（相差1500 s）')
+    fig.suptitle('独立稳定分界点的探索：平滑、窗口极差与斜率判据（相差1500 s）')
     fig.savefig(OUT/'边界独立分界图.png', dpi=180)
+    plt.close(fig)
+
+
+def make_staged_boundary_figure(raw_env, boundary_t, boundary_c, boundary_info):
+    """Plot raw observations together with the final piecewise boundaries."""
+    import matplotlib
+    matplotlib.use('Agg')
+    import matplotlib.pyplot as plt
+    plt.rcParams.update({'font.sans-serif': ['Microsoft YaHei', 'SimHei', 'DejaVu Sans'],
+                         'axes.unicode_minus': False, 'font.size': 10})
+    grid = np.linspace(raw_env[0, 0], raw_env[-1, 0], 1600)
+    specs = [
+        (1, boundary_t, boundary_info['transition_temperature'],
+         boundary_info['plateau_temperature'], '烘房温度 / °C', '#9b1c1f'),
+        (2, boundary_c, boundary_info['transition_moisture'],
+         boundary_info['plateau_moisture'], '环境水分浓度 / (kg/kg)', '#2166ac'),
+    ]
+    fig, axes = plt.subplots(2, 1, figsize=(11, 7), sharex=True, constrained_layout=True)
+    for ax, (column, boundary, transition, plateau, ylabel, color) in zip(axes, specs):
+        left, right = transition['left_s'], transition['right_s']
+        pre = grid <= left
+        blend = (grid >= left) & (grid <= right)
+        post = grid >= right
+        ax.scatter(raw_env[:, 0], raw_env[:, column], s=10, color=color, alpha=0.42,
+                   linewidths=0, label='附件1原始散点')
+        ax.plot(grid[pre], boundary(grid[pre]), color='#1f77b4', lw=2.0,
+                label='过渡点1以前：拉伸指数拟合')
+        ax.plot(grid[blend], boundary(grid[blend]), color='#f28e2b', lw=2.4,
+                label='过渡区：线性平滑连接')
+        ax.plot(grid[post], boundary(grid[post]), color='#2a9d8f', lw=2.0,
+                label='过渡点2以后：稳定尾段均值')
+        ax.axvspan(left, right, color='#f0a202', alpha=0.12, label='600 s平滑过渡区')
+        ax.axvline(left, color='#666666', ls=':', lw=1.0)
+        ax.axvline(right, color='#666666', ls=':', lw=1.0)
+        ax.set_ylabel(ylabel)
+        ax.grid(alpha=0.2)
+        ax.legend(fontsize=8, ncol=2, loc='best')
+    axes[1].set_xlabel('时间 / s')
+    fig.suptitle('原始散点与最终分段环境边界（全观测区间）')
+    fig.savefig(OUT/'分段边界整体拟合图.png', dpi=180)
     plt.close(fig)
 
 
@@ -280,7 +328,7 @@ def main():
     parser.add_argument('--boundary-mode', choices=('staged', 'raw'), default='staged',
                         help='Use the detected smooth constant-stage boundary (default) or raw 60 s knots.')
     parser.add_argument('--fit-endpoint-s', type=float, default=None,
-                        help='Endpoint for the initial-value-fixed fit; default is the last Attachment-1 record.')
+                        help='Optional common fit endpoint; when omitted, fit temperature/moisture to their own transition points.')
     args = parser.parse_args()
     raw_env = read_environment()
     boundary_t, boundary_c, env, boundary_info = build_boundaries(
@@ -363,7 +411,8 @@ def main():
     (OUT/'结果表.md').write_text('\n'.join(lines), encoding='utf-8')
     make_figures(result, env)
     if args.boundary_mode == 'staged':
-        make_boundary_stage_figure(raw_env, boundary_t, boundary_c, boundary_info)
+        make_boundary_stage_figure(raw_env, boundary_info)
+        make_staged_boundary_figure(raw_env, boundary_t, boundary_c, boundary_info)
     print(json.dumps(summary, ensure_ascii=False, indent=2), flush=True)
 
 
