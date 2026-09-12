@@ -21,6 +21,7 @@ if str(HERE) not in sys.path:
 from boundary_stage import build_boundaries
 R0,H,HM,T0,C0=.02,25.,8e-7,28.,2.55
 OUTPUT_R=np.arange(20)*.001
+PLOT_RADIAL_POINTS=201
 
 def read_xlsx(path):
     w=openpyxl.load_workbook(path,data_only=True,read_only=True)
@@ -143,18 +144,29 @@ def simulate(env,radius,n,rtol=2e-10,atol=2e-12,max_step=300.,**options):
     m=model.m
     state=np.r_[np.full(m,T0),np.full(m,C0),0.]
     times=[0.]; tc=[]; cc=[]; mean=[]; radii=[]
+    plot_r_cm=np.linspace(0.,R0*100.,PLOT_RADIAL_POINTS)
+    plot_t=[]; plot_c=[]
     table_profiles=[]
     fixed_profile_x=np.linspace(0,1,401)
     def append(t,y):
         R=float(model.R(t))
         valid=OUTPUT_R<=R
         targets=np.r_[OUTPUT_R[valid]/R,1.]
-        vt=PchipInterpolator(model.x,y[:m])(targets)
-        vc=PchipInterpolator(model.x,y[m:2*m])(targets)
+        interp_t=PchipInterpolator(model.x,y[:m])
+        interp_c=PchipInterpolator(model.x,y[m:2*m])
+        vt=interp_t(targets)
+        vc=interp_c(targets)
         trow,crow=np.full(21,np.nan),np.full(21,np.nan)
         trow[:20][valid],crow[:20][valid]=vt[:-1],vc[:-1]
         trow[-1],crow[-1]=vt[-1],vc[-1]
         tc.append(trow);cc.append(crow);radii.append(R);mean.append(float(2*model.w@y[m:2*m]))
+        plot_valid=plot_r_cm<=R*100.+1e-12
+        plot_t_row=np.full(PLOT_RADIAL_POINTS,np.nan)
+        plot_c_row=np.full(PLOT_RADIAL_POINTS,np.nan)
+        plot_x=plot_r_cm[plot_valid]/(R*100.)
+        plot_t_row[plot_valid]=interp_t(plot_x)
+        plot_c_row[plot_valid]=interp_c(plot_x)
+        plot_t.append(plot_t_row);plot_c.append(plot_c_row)
     append(0.,state)
     def event(t,y):return float(np.max(y[m:2*m])-.15)
     event.terminal,event.direction=True,-1
@@ -200,6 +212,7 @@ def simulate(env,radius,n,rtol=2e-10,atol=2e-12,max_step=300.,**options):
     table_indices=[i for i,t in enumerate(a) if t>0 and abs(t%21600)<1e-7]
     if len(a)-1 not in table_indices:table_indices.append(len(a)-1)
     return {'t':a,'T':np.array(tc),'C':np.array(cc),'R':np.array(radii),'mean_C':np.array(mean),
+            'plot_r_cm':plot_r_cm,'plot_T':np.array(plot_t),'plot_C':np.array(plot_c),
             'event_s':event_s,'finish_s':finish_s,'finish_h':finish_h,
             'final_max_C':float(np.max(last.y[m:2*m,-1])),'max_radial_increase':radial_increase,
             'balance_error':balance,'table_indices':table_indices,
@@ -209,21 +222,44 @@ def graph(result,radius,out):
     import matplotlib
     matplotlib.use('Agg')
     import matplotlib.pyplot as plt
+    from matplotlib.colors import LinearSegmentedColormap, PowerNorm
     plt.rcParams.update({'font.sans-serif':['Microsoft YaHei','SimHei','DejaVu Sans'],'axes.unicode_minus':False,'font.size':10})
-    fig,axes=plt.subplots(1,3,figsize=(15,4.5),constrained_layout=True)
-    axes[0].plot(result['t']/3600,result['R']*100,label='PCHIP半径')
+    time_h=result['t']/3600.
+    r_cm=result['plot_r_cm']
+    temperature=result['plot_T'].T
+    moisture=result['plot_C'].T
+    temperature_cmap=LinearSegmentedColormap.from_list(
+        'temperature_blue_red',['#08306b','#2171b5','#f7f7f7','#cb181d','#67000d'])
+    moisture_cmap=LinearSegmentedColormap.from_list(
+        'moisture_gray_blue',['#f0f0f0','#bdbdbd','#9ecae1','#3182bd','#08519c'])
+    temperature_cmap.set_bad('#ffffff')
+    moisture_cmap.set_bad('#ffffff')
+    fig,axes=plt.subplots(1,3,figsize=(17,5.4),constrained_layout=True)
+    temp_mesh=axes[0].pcolormesh(
+        time_h,r_cm,temperature,shading='nearest',cmap=temperature_cmap,
+        vmin=float(np.nanmin(temperature)),vmax=float(np.nanmax(temperature)))
+    moisture_mesh=axes[1].pcolormesh(
+        time_h,r_cm,moisture,shading='nearest',cmap=moisture_cmap,
+        norm=PowerNorm(gamma=1.8,vmin=float(np.nanmin(moisture)),vmax=float(np.nanmax(moisture))))
+    for ax in axes[:2]:
+        ax.set(xlabel='时间 / h',ylabel='距中心距离 / cm',ylim=(0,R0*100.))
+        ax.set_xlim(float(time_h[0]),float(time_h[-1]))
+        ax.set_yticks(np.arange(0,R0*100.+.01,.5))
+        ax.fill_between(time_h,result['R']*100.,R0*100.,facecolor='none',
+                        edgecolor='black',linewidth=0.,hatch='///',zorder=5)
+        ax.plot(time_h,result['R']*100.,color='black',lw=1.5,zorder=7,label='当前药材表面')
+    axes[0].set_title('温度场')
+    axes[1].set_title('水分浓度场')
+    axes[1].contour(time_h,r_cm,moisture,levels=[.15],colors='black',linewidths=1)
+    temp_bar=fig.colorbar(temp_mesh,ax=axes[0],pad=.02)
+    temp_bar.set_label('温度 / °C')
+    moisture_bar=fig.colorbar(moisture_mesh,ax=axes[1],pad=.02)
+    moisture_bar.set_label('水分浓度 / (kg/kg)')
+    axes[2].plot(time_h,result['R']*100,label='PCHIP半径')
     within=radius[:,0]<=result['finish_s']
-    axes[0].scatter(radius[within,0]/3600,radius[within,1]*100,s=8,color='black',label='附件2')
-    axes[0].set(xlabel='时间 / h',ylabel='半径 / cm',title='药材收缩')
-    for idx,label in [(0,'中心'),(5,'0.5 cm'),(10,'1 cm'),(20,'表面（位置随时间变化）')]:
-        axes[1].plot(result['t']/3600,result['C'][:,idx],label=label)
-    axes[1].axhline(.15,color='black',ls='--',lw=1,label='阈值0.15')
-    axes[1].set(xlabel='时间 / h',ylabel='干基含水率 / (kg/kg)',title='含水率随时间变化')
-    for j,i in enumerate(result['table_indices']):
-        axes[2].plot(result['profile_x']*result['R'][i]*100,result['profiles_C'][j],label=f"{result['t'][i]/3600:.2f} h")
-    axes[2].axhline(.15,color='black',ls='--',lw=1)
-    axes[2].set(xlabel='实际距中心距离 / cm',ylabel='干基含水率 / (kg/kg)',title='收缩区域内的径向分布')
-    for ax in axes:ax.grid(alpha=.2);ax.legend(fontsize=8)
+    axes[2].set(xlabel='时间 / h',ylabel='半径 / cm',title='药材收缩')
+    axes[2].scatter(radius[within,0]/3600,radius[within,1]*100,s=8,color='black',label='附件2')
+    axes[2].grid(alpha=.2);axes[2].legend(fontsize=8)
     fig.savefig(out/'第四问结果图.png',dpi=180)
     plt.close(fig)
 
@@ -236,7 +272,8 @@ def main():
     p.add_argument('--comparisons',action='store_true')
     p.add_argument('--boundary-mode',choices=('staged','raw'),default='staged',
                    help='Use independent detected temperature/moisture stage boundaries (default) or raw 60 s knots.')
-    p.add_argument('--fit-endpoint-s',type=float,default=None)
+    p.add_argument('--fit-endpoint-s',type=float,default=None,
+                   help='Optional common fit endpoint; default is each variable transition point.')
     p.add_argument('--radius-method',choices=('pchip','linear','akima','cubic_spline'),default='pchip')
     a=p.parse_args();a.out.mkdir(parents=True,exist_ok=True)
     raw_env=read_xlsx(PACKAGE/'data'/'附件1.xlsx')

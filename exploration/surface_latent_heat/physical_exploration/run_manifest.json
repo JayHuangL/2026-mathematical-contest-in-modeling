@@ -1,0 +1,25 @@
+{
+  "python": "3.14.6 | packaged by Anaconda, Inc. | (main, Jul  9 2026, 14:29:05) [MSC v.1942 64 bit (AMD64)]",
+  "numpy": "2.4.6",
+  "scipy": "1.18.0",
+  "matplotlib": "3.11.0",
+  "scenario_count_n120": 39,
+  "fine_case_count_n240": 11,
+  "script_sha256": {
+    "explore_physics.py": "47dccf81bba46415b4c0da3f83e5524b9fe82559961d1cfc8e4900458a1a669e",
+    "analyze_exploration.py": "653c90b51273a2b48ad6d634330b8112409d261642f7c3e3ef27600035738a02"
+  },
+  "input_boundary_source_sha256": "8427a6bc0bdceb81a55b5da3d918be9a706403c59830f22325fcc509ce4e1d82",
+  "scope_audits": {
+    "120": {
+      "unchanged": true,
+      "files_checked": 59,
+      "changed": []
+    },
+    "240": {
+      "unchanged": true,
+      "files_checked": 59,
+      "changed": []
+    }
+  }
+}

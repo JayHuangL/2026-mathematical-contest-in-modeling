@@ -144,14 +144,23 @@ def build_boundaries(environment: np.ndarray, mode: str = "staged",
         return bt, bc, env.copy(), {"mode": "raw_piecewise_linear"}
     if mode != "staged":
         raise ValueError("mode must be 'raw' or 'staged'")
-    endpoint = float(t[-1] if fit_endpoint_s is None else fit_endpoint_s)
-    curve_t, fit_t = fit_stretched(t, env[:, 1], endpoint)
-    curve_c, fit_c = fit_stretched(t, env[:, 2], endpoint)
     phase_t = detect_stable_phase(t, env[:, 1])
     phase_c = detect_stable_phase(t, env[:, 2])
     center_t, center_c = phase_t["phase_s"], phase_c["phase_s"]
     left_t, right_t = center_t - transition_s / 2.0, center_t + transition_s / 2.0
     left_c, right_c = center_c - transition_s / 2.0, center_c + transition_s / 2.0
+    # The fit is identified only from the rising part.  If no explicit
+    # endpoint is supplied, each series stops at its own first transition
+    # point; observations used for the constant tail are not reused to fit
+    # the pre-transition curve.
+    if fit_endpoint_s is None:
+        endpoint_t, endpoint_c = left_t, left_c
+        fit_endpoint_policy = "before_each_transition"
+    else:
+        endpoint_t = endpoint_c = float(fit_endpoint_s)
+        fit_endpoint_policy = "explicit_common_endpoint"
+    curve_t, fit_t = fit_stretched(t, env[:, 1], endpoint_t)
+    curve_c, fit_c = fit_stretched(t, env[:, 2], endpoint_c)
     plateau_t = float(np.mean(env[t >= center_t, 1]))
     plateau_c = float(np.mean(env[t >= center_c, 2]))
 
@@ -171,7 +180,9 @@ def build_boundaries(environment: np.ndarray, mode: str = "staged",
     staged_env = np.c_[t, bt(t), bc(t)]
     metadata = {
         "mode": "stretched_exp_plus_independent_constant_stages",
-        "fit_endpoint_s": endpoint,
+        "fit_endpoint_policy": fit_endpoint_policy,
+        "fit_endpoint_temperature_s": float(endpoint_t),
+        "fit_endpoint_moisture_s": float(endpoint_c),
         "transition_s": float(transition_s),
         "phase_temperature": phase_t,
         "phase_moisture": phase_c,

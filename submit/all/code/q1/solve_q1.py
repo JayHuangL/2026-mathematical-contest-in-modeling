@@ -30,6 +30,9 @@ R, RHO, CP, K, H, HM = 0.02, 820.0, 2600.0, 0.36, 25.0, 8e-7
 ALPHA = K / (RHO * CP)
 TIMES = np.arange(1801, dtype=float)
 REPORT_TIMES = np.array([100, 300, 600, 900, 1200, 1500, 1800])
+# The workbook keeps the required 0.1 cm radial output. A denser radial
+# sampling is retained separately for the continuous colour-field figure.
+PLOT_RADIAL_POINTS = 201
 # 第一问只使用附件1的前1800 s数据拟合边界；第二问及以后由各自的
 # boundary_stage.py 使用完整附件1数据拟合，再在稳定分界点前调用该拟合曲线。
 DEFAULT_FIT_WINDOW_S = 1800.0
@@ -180,6 +183,10 @@ def solve_field(n, field, environment, rtol=2e-10, atol=2e-12, max_step=5.0,
     state = np.r_[np.full(n + 1, initial), 0.0]
     sampled = np.empty((1801, 21))
     sampled[0] = initial
+    plot_count = min(PLOT_RADIAL_POINTS, n + 1)
+    plot_indices = np.linspace(0, n, plot_count).round().astype(int)
+    plot_values = np.empty((1801, plot_count))
+    plot_values[0] = initial
     averages = np.empty(1801)
     averages[0] = initial
     snapshots = {}
@@ -200,6 +207,7 @@ def solve_field(n, field, environment, rtol=2e-10, atol=2e-12, max_step=5.0,
         state = sol.y[:, -1]
         rows = evaluation_times.astype(int)
         sampled[rows] = sol.y[indices].T
+        plot_values[rows] = sol.y[plot_indices].T
         mean = volumes @ sol.y[:-1] / area
         averages[rows] = mean
         max_balance_error = max(max_balance_error,
@@ -207,7 +215,8 @@ def solve_field(n, field, environment, rtol=2e-10, atol=2e-12, max_step=5.0,
         for t in REPORT_TIMES[(REPORT_TIMES > start) & (REPORT_TIMES <= stop)]:
             snapshots[int(t)] = sol.y[:-1, np.flatnonzero(rows == t)[0]].copy()
     assert np.isfinite(sampled).all()
-    return dict(values=sampled, r=r, profiles=np.array([snapshots[int(t)] for t in REPORT_TIMES]),
+    return dict(values=sampled, r=r, plot_r=r[plot_indices], plot_values=plot_values,
+                profiles=np.array([snapshots[int(t)] for t in REPORT_TIMES]),
                 mean=averages, balance_error=max_balance_error, nfev=evaluations)
 
 
@@ -284,11 +293,11 @@ def write_sensitivity_report(sensitivity):
     lines = [
         '# 第一问：非线性边界拟合与敏感性分析',
         '',
-        '## 1. 结论与使用范围',
+        '## 1. 数据范围与方法选择',
         '',
-         f"第一问主计算采用附件 1 前 0–{int(fit['fit_window_s'])} s 数据，选择初值固定的拉伸指数模型（stretched_exp）；求解器在 0–1800 s 内直接调用该连续函数作为边界条件。它用于平滑 60 s 记录间的输入，不改变第一问的控制方程、初值和材料参数。",
-        '',
-        r'\[y(t)=y_0+A\{1-\exp[-(t/(3600\tau))^p]\},\quad t\text{ 的单位为 s，}\tau\text{ 的单位为 h}.\]',
+        '附件 1 的环境边界记录范围为 0–14400 s；第一问的候选方法比较和主拟合只使用前 0–1800 s。六类方法中，分段线性、PCHIP、Akima 和自然三次样条是插值方法，平滑样条是带曲率惩罚的正则化最小二乘，只有拉伸指数模型通过非线性最小二乘估计参数。',
+        '按时间顺序每隔 5 个记录留出 1 个样本，阻塞验证指标见 [boundary_cv.csv](boundary_cv.csv)。',
+        '原始 0–14400 s 散点和最终 0–1800 s 拟合曲线分别见 [原始环境散点图](01_raw_environment_scatter.png) 与 [拉伸指数拟合图](02_selected_stretched_exp_fit.png)。',
         '',
         '## 2. 拟合参数与误差',
         '',
@@ -305,6 +314,10 @@ def write_sensitivity_report(sensitivity):
             f"{item['value_at_1800_s']:{precision}} |"
         )
     lines += [
+        '',
+        r'\[y(t)=y_0+A\{1-\exp[-(t/(3600\tau))^p]\},\quad t\text{ 的单位为 s，}\tau\text{ 的单位为 h}.\]',
+        '',
+        f'第一问主计算采用附件 1 前 0–{int(fit["fit_window_s"])} s 数据，并在 0–1800 s 内调用上述连续拉伸指数边界。',
         '', '## 3. 1800 s 主情景结果', '',
         '| 指标 | 数值 |', '|---|---:|',
         f"| 中心温度 / °C | {reference['T_center_1800_C']:.6f} |",
@@ -331,37 +344,123 @@ def write_sensitivity_report(sensitivity):
         '', '## 5. 解读边界', '',
         '本表中的“linear_input”直接量化原分段线性输入与主拟合输入的差异；两个拟合窗情景量化拟合窗口选择的不确定性。',
         '对流和扩散率情景只作一因子扰动，不能等同于参数的统计置信区间。潜热、气固平衡换算和轴向传递仍未被识别，因此不应把本表当作完整的物理误差上界。',
-        '六类候选边界的 blocked hold-out 指标见 [boundary_cv.csv](boundary_cv.csv)。粗糙度按验证区间 721 个等间距曲线点的平均绝对二阶差分计算。温度序列中拉伸指数模型的 RMSE 最低；含水率序列中自然三次样条 RMSE 略低，但其粗糙度约为拉伸指数模型的 69.5 倍。平滑样条的粗糙度略低于拉伸指数模型。综合 RMSE、粗糙度、平滑性和统一函数族的可解释性，主模型选择初值固定的拉伸指数模型。',
-        '拟合曲线、候选方法和拟合终点的可视化见 [边界方法与阶段图](figures/01_boundary_methods_and_phase.png)、[拟合终点比较图](figures/02_endpoint_comparison.png)、[模型输出图](figures/05_model_outputs.png) 和 [敏感性图](figures/04_model_sensitivity.png)。',
+        '六类候选边界的 blocked hold-out 指标见 [boundary_cv.csv](boundary_cv.csv)。其中只有初值固定的拉伸指数模型通过非线性最小二乘估计参数；分段线性、PCHIP、Akima 和自然三次样条是插值方法，平滑样条是带曲率惩罚的正则化最小二乘平滑。粗糙度按验证区间 721 个等间距曲线点的平均绝对二阶差分计算。温度序列中拉伸指数模型的 RMSE 最低；环境水分浓度序列中自然三次样条 RMSE 略低，但其粗糙度约为拉伸指数模型的 69.5 倍。综合误差、粗糙度和统一函数族的可解释性，主模型选择初值固定的拉伸指数模型。',
+        '正文中的原始边界散点和最终选定曲线分别见 [原始环境散点图](figures/01_raw_environment_scatter.png) 与 [拉伸指数拟合图](figures/02_selected_stretched_exp_fit.png)。',
         '',
     ]
     (OUT / '边界拟合与敏感性分析.md').write_text('\n'.join(lines), encoding='utf-8')
+
+
+def make_boundary_figures(raw_environment, boundary_info):
+    """Save the two boundary figures used by section 5.1.1.
+
+    The first figure is deliberately raw data only (the complete 0--14400 s
+    record).  The second is restricted to the Q1 fitting window and contains
+    only the selected stretched-exponential curve.  Keeping these plots
+    separate avoids visually mixing model selection with the later field
+    solution.
+    """
+    import matplotlib
+    matplotlib.use('Agg')
+    import matplotlib.pyplot as plt
+
+    plt.rcParams.update({'font.sans-serif': ['Microsoft YaHei', 'SimHei', 'DejaVu Sans'],
+                         'axes.unicode_minus': False, 'font.size': 10})
+    t_s = np.asarray(raw_environment[:, 0], dtype=float)
+    labels = [('烘房温度', '温度 / °C', 1, '#9b1c1f'),
+              ('环境水分浓度', '水分浓度 / (kg/kg)', 2, '#2166ac')]
+
+    # Figure 1: no curve is overlaid; it is an honest view of the supplied
+    # 60 s observations and the later plateau.
+    fig, axes = plt.subplots(1, 2, figsize=(12.5, 4.5), constrained_layout=True)
+    for ax, (title, ylabel, column, color) in zip(axes, labels):
+        ax.scatter(t_s, raw_environment[:, column], s=14,
+                   color=color, alpha=0.78, linewidths=0, label='附件1观测散点')
+        ax.set(title=f'{title}：0–14400 s原始数据', xlabel='时间 / s', ylabel=ylabel,
+               xlim=(0.0, float(t_s[-1])))
+        ax.grid(alpha=0.22)
+        ax.legend(fontsize=8, loc='best')
+    fig.savefig(OUT / '01_raw_environment_scatter.png', dpi=220)
+    plt.close(fig)
+
+    # Figure 2: selected fit only, using the same 0--1800 s observations
+    # used for the Q1 identification.  No competing curves are drawn here.
+    if not boundary_info.get('series'):
+        return
+    fit_mask = t_s <= DEFAULT_FIT_WINDOW_S + 1e-9
+    t_fit = t_s[fit_mask]
+    grid = np.linspace(0.0, DEFAULT_FIT_WINDOW_S, 500)
+    fig, axes = plt.subplots(1, 2, figsize=(12.5, 4.5), constrained_layout=True)
+    for ax, (title, ylabel, column, _color), name in zip(
+            axes, labels, ('T_infty_C', 'C_infty_kg_per_kg')):
+        item = boundary_info['series'][name]
+        y_fit = raw_environment[fit_mask, column]
+        y_curve = stretched_exponential(grid, item['initial_value'], item['amplitude'],
+                                        item['tau_h'], item['exponent'])
+        ax.scatter(t_fit, y_fit, s=16, color='#444444', alpha=0.82,
+                   linewidths=0, label='0–1800 s观测散点')
+        ax.plot(grid, y_curve, color='#c51b8a', lw=2.0,
+                label='初值固定的拉伸指数曲线')
+        rmse = item['q1_rmse']
+        rmse_text = f'RMSE={rmse:.6g}' if column == 1 else f'RMSE={rmse:.3e}'
+        ax.set(title=f'{title}：拉伸指数拟合（0–1800 s）', xlabel='时间 / s', ylabel=ylabel,
+               xlim=(0.0, DEFAULT_FIT_WINDOW_S))
+        ax.text(0.03, 0.95, rmse_text, transform=ax.transAxes, va='top',
+                bbox={'facecolor': 'white', 'alpha': 0.8, 'edgecolor': '0.7'})
+        ax.grid(alpha=0.22)
+        ax.legend(fontsize=8, loc='best')
+    fig.savefig(OUT / '02_selected_stretched_exp_fit.png', dpi=220)
+    plt.close(fig)
 
 
 def make_figures(result_t, result_c, env):
     import matplotlib
     matplotlib.use('Agg')
     import matplotlib.pyplot as plt
+    from matplotlib.colors import LinearSegmentedColormap, PowerNorm
+
     plt.rcParams.update({'font.sans-serif': ['Microsoft YaHei', 'SimHei', 'DejaVu Sans'],
                          'axes.unicode_minus': False, 'font.size': 10})
-    fig, axes = plt.subplots(2, 2, figsize=(12, 8), constrained_layout=True)
-    colors = plt.cm.viridis(np.linspace(0.05, 0.9, 5))
-    for idx, color in zip([0, 5, 10, 15, 20], colors):
-        axes[0, 0].plot(TIMES / 60, result_t['values'][:, idx], color=color, label=f'{idx / 10:g} cm')
-        axes[0, 1].plot(TIMES / 60, result_c['values'][:, idx], color=color, label=f'{idx / 10:g} cm')
-    axes[0, 0].plot(TIMES / 60, np.interp(TIMES, env[:, 0], env[:, 1]),
-                    color='black', ls='--', lw=1.2, label='烘房温度')
-    for row, t in enumerate(REPORT_TIMES):
-        axes[1, 0].plot(result_t['r'] * 100, result_t['profiles'][row], label=f'{t} s')
-        axes[1, 1].plot(result_c['r'] * 100, result_c['profiles'][row], label=f'{t} s')
-    specs = [('温度随时间变化', '时间 / min', '温度 / °C'),
-             ('含水率随时间变化', '时间 / min', '干基含水率 / (kg/kg)'),
-             ('不同时间的径向温度分布', '距中心距离 / cm', '温度 / °C'),
-             ('不同时间的径向含水率分布', '距中心距离 / cm', '干基含水率 / (kg/kg)')]
-    for ax, (title, xlabel, ylabel) in zip(axes.flat, specs):
-        ax.set(title=title, xlabel=xlabel, ylabel=ylabel)
-        ax.grid(alpha=0.2)
-        ax.legend(fontsize=8, ncol=2)
+    # The workbook stores 21 radii (0--2 cm at 0.1 cm intervals), while the
+    # figure uses the denser samples retained by solve_field.
+    time_min = TIMES / 60.0
+    temperature_values = result_t.get('plot_values', result_t['values'])
+    moisture_values = result_c.get('plot_values', result_c['values'])
+    plot_r = result_t.get('plot_r')
+    if plot_r is None:
+        plot_r = np.linspace(0.0, R, temperature_values.shape[1])
+    r_cm = np.asarray(plot_r) * 100.0
+    temperature = temperature_values.T
+    moisture = moisture_values.T
+
+    temperature_cmap = LinearSegmentedColormap.from_list(
+        'temperature_blue_red',
+        ['#08306b', '#2171b5', '#f7f7f7', '#cb181d', '#67000d'])
+    moisture_cmap = LinearSegmentedColormap.from_list(
+        'moisture_gray_blue',
+        ['#f0f0f0', '#bdbdbd', '#9ecae1', '#3182bd', '#08519c'])
+
+    fig, axes = plt.subplots(1, 2, figsize=(13, 5.6), constrained_layout=True)
+    temp_mesh = axes[0].pcolormesh(
+        time_min, r_cm, temperature, shading='nearest', cmap=temperature_cmap,
+        vmin=float(np.min(temperature)), vmax=float(np.max(temperature)))
+    moisture_mesh = axes[1].pcolormesh(
+        time_min, r_cm, moisture, shading='nearest', cmap=moisture_cmap,
+        norm=PowerNorm(gamma=1.8, vmin=float(np.min(moisture)),
+                       vmax=float(np.max(moisture))))
+
+    axes[0].set(title='温度场', xlabel='时间 / min', ylabel='距中心距离 / cm',
+                ylim=(0, R * 100.0))
+    axes[1].set(title='水分浓度场', xlabel='时间 / min', ylabel='距中心距离 / cm',
+                ylim=(0, R * 100.0))
+    for ax in axes:
+        ax.set_xlim(float(time_min[0]), float(time_min[-1]))
+        ax.set_yticks(np.arange(0, R * 100.0 + 0.01, 0.5))
+
+    temp_bar = fig.colorbar(temp_mesh, ax=axes[0], pad=0.02)
+    temp_bar.set_label('温度 / °C')
+    moisture_bar = fig.colorbar(moisture_mesh, ax=axes[1], pad=0.02)
+    moisture_bar.set_label('水分浓度 / (kg/kg)')
     fig.savefig(OUT / '第一问结果图.png', dpi=180)
     plt.close(fig)
 
@@ -388,6 +487,9 @@ def main():
         boundary_info = {'mode': 'piecewise_linear', 'fit_window_s': None,
                          'series': {}, 'family': 'Attachment-1 piecewise-linear interpolation'}
         boundary_evaluator = None
+    # Section 5.1.1 uses these two plots to separate raw-data inspection,
+    # model comparison, and the final selected boundary representation.
+    make_boundary_figures(raw_env, boundary_info)
     previous = None
     convergence = []
     results_by_grid = {}
@@ -452,8 +554,9 @@ def main():
     if sensitivity is not None:
         summary['sensitivity'] = sensitivity
     (OUT / 'validation.json').write_text(json.dumps(summary, ensure_ascii=False, indent=2), encoding='utf-8')
-    np.savez_compressed(OUT / 'result1_full_precision.npz', t=TIMES, r_cm=payload['r_cm'],
-                        T=rt['values'], C=rc['values'], mean_T=rt['mean'], mean_C=rc['mean'])
+    np.savez_compressed(
+        OUT / 'result1_full_precision.npz', t=TIMES, r_cm=payload['r_cm'],
+        T=rt['values'], C=rc['values'], mean_T=rt['mean'], mean_C=rc['mean'])
     lines = []
     for title, field in [('表1：温度 / °C', 'T'), ('表2：干基含水率 / (kg/kg)', 'C')]:
         lines += [f'### {title}', '', '| 时间 / s | 0 cm | 0.5 cm | 1 cm | 1.5 cm | 2 cm |',
