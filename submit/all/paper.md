@@ -300,7 +300,41 @@ $$
 R_y(s)=\max_{s\le t\le s+W}\widetilde y(t)-\min_{s\le t\le s+W}\widetilde y(t),
 $$
 
-并用窗口内线性拟合斜率 \(b_y(s)\) 描述边界量是否仍在系统性变化。再由末段平滑残差 \(e_i=y_i-\widetilde y_i\) 估计噪声水平 \(\sigma_y=1.4826\,\mathrm{median}|e_i-\mathrm{median}(e)|\)，由相邻记录差的中位数估计记录分辨率 \(d_y\)，设置 \(\varepsilon_{R,y}=\max(2\sigma_y,4d_y)\) 和 \(\varepsilon_{b,y}=\varepsilon_{R,y}/W\)。当某窗口及其后按时间排列的连续两个窗口均满足
+并用窗口内线性拟合斜率 \(b_y(s)\) 描述边界量是否仍在系统性变化。为使波动估计不被预热阶段的真实趋势污染，以下噪声估计只使用末段样本 \(I_{\mathrm{tail}}=\{i:t_i\ge 0.75t_{\max}\}\)。对残差 \(e_i=y_i-\widetilde y_i\)，先定义其中心位置和中位数绝对偏差（MAD）为
+
+$$
+m_e=\operatorname{median}_{i\in I_{\mathrm{tail}}}(e_i),
+\qquad
+\operatorname{MAD}(e)=
+\operatorname{median}_{i\in I_{\mathrm{tail}}}|e_i-m_e|.
+$$
+
+这里的 \(\operatorname{median}\) 是中位数，即将样本从小到大排序后取 50\% 分位点；因此内层中位数 \(m_e\) 用来确定残差的中心，外层中位数则给出残差偏离该中心的典型幅度。采用绝对偏差可以避免正、负残差相互抵消，采用中位数则可减弱偶然异常点的影响。
+
+下面说明 MAD 前的系数如何得到。将末段残差近似看作含有零均值正态噪声的观测，即 \(e_i\approx \mu_e+\epsilon_i\)，其中 \(\epsilon_i\sim N(0,\sigma_y^2)\)。令 \(Z=\epsilon_i/\sigma_y\sim N(0,1)\)，并记标准正态分布函数为 \(\Phi\)。设 \(q\) 为 \(|Z|\) 的中位数，则
+
+$$
+\Pr(|Z|\le q)
+=\Pr(-q\le Z\le q)
+=\Phi(q)-\Phi(-q)
+=2\Phi(q)-1
+=0.5
+\ \Longrightarrow
+q=\Phi^{-1}(0.75)=0.67448975.
+$$
+
+所以在正态噪声假设下，
+
+$$
+\operatorname{MAD}(e)\approx 0.67448975\,\sigma_y,
+\qquad
+\widehat{\sigma}_y
+=\frac{\operatorname{MAD}(e)}{\Phi^{-1}(0.75)}
+=\frac{\operatorname{MAD}(e)}{0.67448975}
+\approx 1.4826\,\operatorname{MAD}(e).
+$$
+
+因此，\(1.4826=1/\Phi^{-1}(0.75)\) 是把 MAD 校准为正态分布标准差的无量纲系数，而不是额外拟合得到的参数。最终由末段平滑残差计算 \(\widehat{\sigma}_y=1.4826\,\operatorname{MAD}(e)\)，再由相邻记录差的中位数估计记录分辨率 \(d_y\)，设置 \(\varepsilon_{R,y}=\max(2\widehat{\sigma}_y,4d_y)\) 和 \(\varepsilon_{b,y}=\varepsilon_{R,y}/W\)。当某窗口及其后按时间排列的连续两个窗口均满足
 
 $$
 R_y(s)\le\varepsilon_{R,y},\qquad |b_y(s)|\le\varepsilon_{b,y},
@@ -312,7 +346,7 @@ $$
 
 **表5 烘房温度与环境水分浓度的稳定阶段识别结果**
 
-| 序列 | \(\sigma_y\) | \(\varepsilon_{R,y}\) | \(\varepsilon_{b,y}\) | 连续窗口起点 / s | 稳定分界点 \(t_{s,y}\) / s | 尾段均值 |
+| 序列 | \(\widehat{\sigma}_y\) | \(\varepsilon_{R,y}\) | \(\varepsilon_{b,y}\) | 连续窗口起点 / s | 稳定分界点 \(t_{s,y}\) / s | 尾段均值 |
 |---|---:|---:|---:|---|---:|---:|
 | 烘房温度 | 0.180853 °C | 0.720000 °C | \(4.00\times10^{-4}\) °C/s | 5280, 7140, 9000 | 5280 | 49.885797 °C |
 | 环境水分浓度 | \(1.70067\times10^{-4}\) kg/kg | \(8.60\times10^{-4}\) kg/kg | \(4.78\times10^{-7}\) (kg/kg)/s | 6780, 8640, 10500 | 6780 | 0.04982109 kg/kg |
