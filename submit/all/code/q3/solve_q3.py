@@ -173,7 +173,7 @@ def plot(result,out):
     moisture_bar=fig.colorbar(moisture_mesh,ax=ax,pad=.02,ticks=moisture_ticks)
     moisture_bar.ax.tick_params(labelsize=8,pad=2)
     moisture_bar.set_label('水分浓度 / (kg/kg)')
-    fig.savefig(out/'第三问结果图.png',dpi=180)
+    fig.savefig(out/'图11_第三问干燥结果.png',dpi=180)
     plt.close(fig)
 
 

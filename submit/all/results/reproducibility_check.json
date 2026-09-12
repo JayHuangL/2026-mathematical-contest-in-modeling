@@ -55,6 +55,26 @@
       3077
     ]
   },
+  "q1_workbook_values": {
+    "values_match_payload": true,
+    "rows": 1800,
+    "columns": 21
+  },
+  "q2_workbook_values": {
+    "values_match_payload": true,
+    "rows": 10800,
+    "columns": 21
+  },
+  "q3_workbook_values": {
+    "values_match_payload": true,
+    "rows": 3461,
+    "columns": 21
+  },
+  "q4_workbook_values": {
+    "values_match_payload": true,
+    "rows": 3077,
+    "columns": 21
+  },
   "input_sha256": {
     "附件1.xlsx": "7ef32870abeef420b89560b2530ff60dfe4255917805151d89988d0311af9dd7",
     "附件2.xlsx": "5563acbfa4b4afb10cc6c03e2207e5369bf39da27576672aff14cc5c32e704af"

@@ -1,15 +1,18 @@
 """Reproduce the integrated A-problem calculations from one entry point.
 
 Default mode uses the grids and checks reported in the paper.  ``--quick``
-keeps the same equations and output formats but uses smaller grids for a
-smoke test.  All generated artifacts stay under ``results/``.
+keeps the same equations and output formats but uses smaller grids for an
+isolated smoke test.  Numerical artifacts stay under ``results/``; the paper
+figures are synchronized into ``figures/``.
 """
 from __future__ import annotations
 
 import argparse
+import os
 import shutil
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 
@@ -29,16 +32,39 @@ Q1_FIT_ENDPOINT_S = 1800.0
 def run(script: Path, *args: str) -> None:
     command = [sys.executable, str(script), *args]
     print("+", " ".join(command), flush=True)
-    subprocess.run(command, cwd=PACKAGE, check=True)
+    env = os.environ.copy()
+    env.setdefault("PYTHONDONTWRITEBYTECODE", "1")
+    subprocess.run(command, cwd=PACKAGE, check=True, env=env)
+
+
+def run_isolated_quick() -> None:
+    """Run the smoke test in a disposable copy so formal results stay intact."""
+    with tempfile.TemporaryDirectory(prefix="solo_math_modeling_quick_") as temp:
+        quick_package = Path(temp) / PACKAGE.name
+        shutil.copytree(
+            PACKAGE,
+            quick_package,
+            ignore=shutil.ignore_patterns("__pycache__"),
+        )
+        command = [sys.executable, str(quick_package / "run_all.py"),
+                   "--quick", "--_isolated-quick"]
+        print("+", " ".join(command), flush=True)
+        env = os.environ.copy()
+        env.setdefault("PYTHONDONTWRITEBYTECODE", "1")
+        subprocess.run(command, cwd=quick_package, check=True, env=env)
+    print("Quick smoke test passed in a temporary copy; formal results were not changed.",
+          flush=True)
 
 
 def copy_main_figures() -> None:
     mapping = {
-        "q1": ["第一问结果图.png", "01_raw_environment_scatter.png",
-               "02_selected_stretched_exp_fit.png"],
-        "q2": ["第二问结果图.png", "边界独立分界图.png", "分段边界整体拟合图.png"],
-        "q3": ["第三问结果图.png"],
-        "q4": ["第四问结果图.png", "01_raw_radius_scatter.png", "03_radius_methods.png"],
+        "q1": ["图05_第一问温度水分场.png", "图01_原始环境边界散点.png",
+               "图02_拉伸指数最终拟合.png"],
+        "q2": ["图10_第二问温度水分场.png", "图06_边界独立稳定分界.png",
+               "图07_分段环境边界拟合.png"],
+        "q3": ["图11_第三问干燥结果.png"],
+        "q4": ["图14_第四问收缩水分场.png", "图12_半径原始散点.png",
+               "图13_半径插值方法比较.png"],
     }
     for question, names in mapping.items():
         for name in names:
@@ -50,7 +76,12 @@ def copy_main_figures() -> None:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--quick", action="store_true", help="run a smaller smoke-test grid")
+    parser.add_argument("--_isolated-quick", action="store_true", help=argparse.SUPPRESS)
     args = parser.parse_args()
+
+    if args.quick and not args._isolated_quick:
+        run_isolated_quick()
+        return
 
     if args.quick:
         q1_grids, q2_grids, q3_grids, q4_grids = [200, 400], [100, 200], [100, 200], [100, 200]
@@ -79,6 +110,8 @@ def main() -> None:
         "--boundary-mode", "staged", *common, *q4_extra)
     run(CODE / "build_workbooks.py")
     copy_main_figures()
+    run(CODE / "q3" / "verify_result3.py")
+    run(CODE / "q4" / "verify_result4.py")
     run(CODE / "verify_all.py")
     print("Integrated reproduction completed under", RESULTS)
 
