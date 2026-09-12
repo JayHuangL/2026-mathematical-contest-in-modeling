@@ -127,7 +127,7 @@ def detect_stable_phase(t: np.ndarray, y: np.ndarray, window_s: float = 1800.0,
 
 def build_boundaries(environment: np.ndarray, mode: str = "staged",
                      fit_endpoint_s: float | None = None,
-                     transition_s: float = 600.0):
+                     transition_s: float = 1800.0):
     """Build temperature/moisture callables and a knot table for the solvers.
 
     ``mode='raw'`` reproduces the original piecewise-linear input.  The
@@ -147,8 +147,10 @@ def build_boundaries(environment: np.ndarray, mode: str = "staged",
     phase_t = detect_stable_phase(t, env[:, 1])
     phase_c = detect_stable_phase(t, env[:, 2])
     center_t, center_c = phase_t["phase_s"], phase_c["phase_s"]
-    left_t, right_t = center_t - transition_s / 2.0, center_t + transition_s / 2.0
-    left_c, right_c = center_c - transition_s / 2.0, center_c + transition_s / 2.0
+    # The detected stable time is the first transition point.  The complete
+    # transition then occupies one forward sampling step (1800 s by default).
+    left_t, right_t = center_t, center_t + transition_s
+    left_c, right_c = center_c, center_c + transition_s
     # The fit is identified only from the rising part.  If no explicit
     # endpoint is supplied, each series stops at its own first transition
     # point; observations used for the constant tail are not reused to fit
