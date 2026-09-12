@@ -309,7 +309,7 @@ def make_staged_boundary_figure(raw_env, boundary_t, boundary_c, boundary_info):
                 label='过渡区：线性平滑连接')
         ax.plot(grid[post], boundary(grid[post]), color='#2a9d8f', lw=2.0,
                 label='过渡点2以后：稳定尾段均值')
-        ax.axvspan(left, right, color='#f0a202', alpha=0.12, label='600 s平滑过渡区')
+        ax.axvspan(left, right, color='#f0a202', alpha=0.12, label='1800 s平滑过渡区')
         ax.axvline(left, color='#666666', ls=':', lw=1.0)
         ax.axvline(right, color='#666666', ls=':', lw=1.0)
         ax.set_ylabel(ylabel)
@@ -380,14 +380,14 @@ def main():
                'duration_s': END_TIME, 'grid_intervals': args.grids[-1],
                'rtol': 2e-10, 'atol': 2e-12, 'max_step_s': 5,
                'interpolation': ('detected independent stage boundaries: stretched exponential before '
-                                 'the temperature/moisture-specific split, 600 s blends, then separate '
+                                 'the temperature/moisture-specific split, 1800 s blends, then separate '
                                  'measured tail means'
                                  if args.boundary_mode == 'staged' else
                                  'piecewise linear at original 60 s knots'),
                'boundary_mode': args.boundary_mode,
                'boundary_metadata': boundary_info,
                'raw_environment_sha256': hashlib.sha256((DATA/'附件1.xlsx').read_bytes()).hexdigest(),
-               'tail_assumption': ('hold the detected tail mean after the 600 s transition; '
+               'tail_assumption': ('hold the detected tail mean after the 1800 s transition; '
                                    'the phase point and tail mean are recorded in boundary_metadata'
                                    if args.boundary_mode == 'staged' else
                                    'hold final observation after 14400 s'),
