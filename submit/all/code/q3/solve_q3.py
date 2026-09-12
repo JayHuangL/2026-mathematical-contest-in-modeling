@@ -18,6 +18,7 @@ HERE = Path(__file__).resolve().parent
 PACKAGE = HERE.parent.parent
 OUT = PACKAGE / 'results' / 'q3'
 OUT.mkdir(parents=True, exist_ok=True)
+PLOT_RADIAL_POINTS = 201
 
 
 def load_q2(root=None):
@@ -52,9 +53,14 @@ def _integrate(q2, env, n, rtol=2e-10, atol=2e-12, max_step=300., tail=None,
     m = model.m
     state = np.r_[np.full(m, q2.T0), np.full(m, q2.C0), 0.0]
     radii=np.linspace(0,q2.R,21)
+    plot_radii=np.linspace(0,q2.R,PLOT_RADIAL_POINTS)
     def sample(y):
         return PchipInterpolator(model.r,y[:m],axis=0)(radii), PchipInterpolator(model.r,y[m:2*m],axis=0)(radii)
+    def sample_plot(y):
+        return (PchipInterpolator(model.r,y[:m],axis=0)(plot_radii),
+                PchipInterpolator(model.r,y[m:2*m],axis=0)(plot_radii))
     times, out_t, out_c, avg_c = [0.], [np.full(21,28.)], [np.full(21,2.55)], [2.55]
+    plot_t, plot_c = [np.full(PLOT_RADIAL_POINTS,28.)], [np.full(PLOT_RADIAL_POINTS,2.55)]
     balance, max_radial_increase = 0., 0.
     event_t, event_y = None, None
     snapshots = {}
@@ -83,6 +89,9 @@ def _integrate(q2, env, n, rtol=2e-10, atol=2e-12, max_step=300., tail=None,
             sampled_t,sampled_c=sample(y)
             out_t.extend(sampled_t.T)
             out_c.extend(sampled_c.T)
+            sampled_plot_t,sampled_plot_c=sample_plot(y)
+            plot_t.extend(sampled_plot_t.T)
+            plot_c.extend(sampled_plot_c.T)
             avg_c.extend((model.w@y[m:2*m]/model.area).tolist())
         state = sol.y[:,-1]
         if stop%21600 == 0:
@@ -107,6 +116,9 @@ def _integrate(q2, env, n, rtol=2e-10, atol=2e-12, max_step=300., tail=None,
     sampled_t,sampled_c=sample(final_y)
     out_t.append(sampled_t)
     out_c.append(sampled_c)
+    sampled_plot_t,sampled_plot_c=sample_plot(final_y)
+    plot_t.append(sampled_plot_t)
+    plot_c.append(sampled_plot_c)
     avg_c.append(float(model.w@final_y[m:2*m]/model.area))
     times, out_t, out_c = np.array(times),np.array(out_t),np.array(out_c)
     assert np.all(np.diff(times)>0)
@@ -114,7 +126,9 @@ def _integrate(q2, env, n, rtol=2e-10, atol=2e-12, max_step=300., tail=None,
     table_indices = [i for i,t in enumerate(times) if t>0 and abs(t%21600)<1e-6]
     if len(times)-1 not in table_indices:
         table_indices.append(len(times)-1)
-    return dict(t=times,T=out_t,C=out_c,mean_C=np.array(avg_c),event_s=event_t,
+    return dict(t=times,T=out_t,C=out_c,mean_C=np.array(avg_c),
+                plot_r_cm=plot_radii*100.0,plot_T=np.array(plot_t),plot_C=np.array(plot_c),
+                event_s=event_t,
                 finish_h=float(finish_h),finish_s=finish_s,
                 final_max_C=float(np.max(final_y[m:2*m])),
                 final_max_r_cm=float(model.r[np.argmax(final_y[m:2*m])]*100),
@@ -126,22 +140,36 @@ def plot(result,out):
     import matplotlib
     matplotlib.use('Agg')
     import matplotlib.pyplot as plt
+    from matplotlib.colors import LinearSegmentedColormap, PowerNorm
     plt.rcParams.update({'font.sans-serif':['Microsoft YaHei','SimHei','DejaVu Sans'],
                          'axes.unicode_minus':False,'font.size':10})
-    fig, axes = plt.subplots(1,2,figsize=(12,4.7),constrained_layout=True)
-    for i in [0,5,10,15,20]:
-        axes[0].plot(result['t']/3600,result['C'][:,i],label=f'{i/10:g} cm')
-    axes[0].axhline(.15,color='black',ls='--',lw=1,label='达标阈值 0.15')
-    axes[0].axvline(result['finish_h'],color='gray',ls=':',lw=1)
-    axes[0].set(xlabel='时间 / h',ylabel='干基含水率 / (kg/kg)',title='不同位置的干燥过程')
-    for t in result['table_t']:
-        i=np.argmin(abs(result['t']-t))
-        axes[1].plot(np.linspace(0,2,21),result['C'][i],label=f'{t/3600:.2f} h')
-    axes[1].axhline(.15,color='black',ls='--',lw=1)
-    axes[1].set(xlabel='距中心距离 / cm',ylabel='干基含水率 / (kg/kg)',title='每6小时及结束时的径向分布')
+    time_h=result['t']/3600.0
+    r_cm=result['plot_r_cm']
+    temperature=result['plot_T'].T
+    moisture=result['plot_C'].T
+    temperature_cmap=LinearSegmentedColormap.from_list(
+        'temperature_blue_red',['#08306b','#2171b5','#f7f7f7','#cb181d','#67000d'])
+    moisture_cmap=LinearSegmentedColormap.from_list(
+        'moisture_gray_blue',['#f0f0f0','#bdbdbd','#9ecae1','#3182bd','#08519c'])
+    fig, axes = plt.subplots(1,2,figsize=(13,5.6),constrained_layout=True)
+    temp_mesh=axes[0].pcolormesh(
+        time_h,r_cm,temperature,shading='nearest',cmap=temperature_cmap,
+        vmin=float(np.min(temperature)),vmax=float(np.max(temperature)))
+    moisture_mesh=axes[1].pcolormesh(
+        time_h,r_cm,moisture,shading='nearest',cmap=moisture_cmap,
+        norm=PowerNorm(gamma=1.8,vmin=float(np.min(moisture)),vmax=float(np.max(moisture))))
+    axes[0].set(title='温度场',xlabel='时间 / h',ylabel='距中心距离 / cm',ylim=(0,2))
+    axes[1].set(title='水分浓度场',xlabel='时间 / h',ylabel='距中心距离 / cm',ylim=(0,2))
+    axes[0].axvline(result['finish_h'],color='black',ls=':',lw=1,label='报告结束时刻')
+    axes[1].axvline(result['finish_h'],color='black',ls=':',lw=1,label='报告结束时刻')
+    axes[1].contour(time_h,r_cm,moisture,levels=[.15],colors='black',linewidths=1)
     for ax in axes:
-        ax.grid(alpha=.2)
-        ax.legend(fontsize=8,ncol=2)
+        ax.set_xlim(float(time_h[0]),float(time_h[-1]))
+        ax.set_yticks(np.arange(0,2.01,.5))
+    temp_bar=fig.colorbar(temp_mesh,ax=axes[0],pad=.02)
+    temp_bar.set_label('温度 / °C')
+    moisture_bar=fig.colorbar(moisture_mesh,ax=axes[1],pad=.02)
+    moisture_bar.set_label('水分浓度 / (kg/kg)')
     fig.savefig(out/'第三问结果图.png',dpi=180)
     plt.close(fig)
 
@@ -225,7 +253,9 @@ def main():
     payload={'r_cm':np.round(np.linspace(0,2,21),1).tolist(),
              't_s':np.round(result['t'][1:],4).tolist(),'C':np.round(result['C'][1:],4).tolist()}
     (args.out/'result3_data.json').write_text(json.dumps(payload,ensure_ascii=False),encoding='utf-8')
-    np.savez_compressed(args.out/'result3_full_precision.npz',t=result['t'],T=result['T'],C=result['C'],mean_C=result['mean_C'])
+    np.savez_compressed(
+        args.out/'result3_full_precision.npz',t=result['t'],T=result['T'],C=result['C'],mean_C=result['mean_C'],
+    )
     lines=['# 表5：药材烘干过程的水分浓度','',
            '| 时间 / h | 0 cm | 0.5 cm | 1 cm | 1.5 cm | 2 cm |','|---:|---:|---:|---:|---:|---:|']
     for t,row in zip(result['table_t'],result['table_C']):

@@ -34,7 +34,8 @@ def run(script: Path, *args: str) -> None:
 
 def copy_main_figures() -> None:
     mapping = {
-        "q1": ["第一问结果图.png"],
+        "q1": ["第一问结果图.png", "01_raw_environment_scatter.png",
+               "02_selected_stretched_exp_fit.png"],
         "q2": ["第二问结果图.png", "边界独立分界图.png"],
         "q3": ["第三问结果图.png"],
         "q4": ["第四问结果图.png"],

@@ -117,7 +117,7 @@
       "dr_m": 0.0001,
       "moisture_balance_error": 4.6629367034256575e-15,
       "heat_rate_balance_error": 4.440892098500626e-16,
-      "elapsed_s": 2.344632199998159
+      "elapsed_s": 2.4980107999999746
     },
     {
       "intervals": 300,
@@ -136,7 +136,7 @@
         "time_s": 1,
         "r_cm": 2.0
       },
-      "elapsed_s": 2.6954084999997576
+      "elapsed_s": 2.818307399999867
     },
     {
       "intervals": 400,
@@ -155,7 +155,7 @@
         "time_s": 1,
         "r_cm": 2.0
       },
-      "elapsed_s": 3.091521800000919
+      "elapsed_s": 3.341423799999802
     }
   ],
   "time_check": {
