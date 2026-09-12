@@ -238,7 +238,7 @@ def make_figures(result, env):
     temp_bar.set_label('温度 / °C')
     moisture_bar = fig.colorbar(moisture_mesh, ax=axes[1], pad=0.02)
     moisture_bar.set_label('水分浓度 / (kg/kg)')
-    fig.savefig(OUT/'第二问结果图.png', dpi=180)
+    fig.savefig(OUT/'图10_第二问温度水分场.png', dpi=180)
     plt.close(fig)
 
 
@@ -277,7 +277,7 @@ def make_boundary_stage_figure(raw_env, boundary_info):
         ax.legend(fontsize=8, ncol=3, loc='best')
     axes[1].set_xlabel('时间 / s')
     fig.suptitle('独立稳定分界点的探索：平滑、窗口极差与斜率判据（相差1500 s）')
-    fig.savefig(OUT/'边界独立分界图.png', dpi=180)
+    fig.savefig(OUT/'图06_边界独立稳定分界.png', dpi=180)
     plt.close(fig)
 
 
@@ -317,7 +317,7 @@ def make_staged_boundary_figure(raw_env, boundary_t, boundary_c, boundary_info):
         ax.legend(fontsize=8, ncol=2, loc='best')
     axes[1].set_xlabel('时间 / s')
     fig.suptitle('原始散点与最终分段环境边界（全观测区间）')
-    fig.savefig(OUT/'分段边界整体拟合图.png', dpi=180)
+    fig.savefig(OUT/'图07_分段环境边界拟合.png', dpi=180)
     plt.close(fig)
 
 

@@ -116,7 +116,7 @@ def radius_diagnostics(radius,out):
     ax.set(xlabel='时间 / h',ylabel='半径 / cm',title='附件2：药材半径原始观测')
     ax.grid(alpha=.2)
     ax.legend(fontsize=9)
-    fig.savefig(out/'01_raw_radius_scatter.png',dpi=180)
+    fig.savefig(out/'图12_半径原始散点.png',dpi=180)
     plt.close(fig)
 
     grid=np.linspace(t[0],t[-1],1800)
@@ -132,7 +132,7 @@ def radius_diagnostics(radius,out):
         ax.grid(alpha=.2)
         ax.legend(fontsize=8)
     fig.suptitle('半径数据与候选连续表示方法比较')
-    fig.savefig(out/'03_radius_methods.png',dpi=180)
+    fig.savefig(out/'图13_半径插值方法比较.png',dpi=180)
     plt.close(fig)
     return rows
 
@@ -365,7 +365,7 @@ def graph(result,out):
                               ticks=moisture_ticks)
     moisture_bar.ax.tick_params(labelsize=8,pad=2)
     moisture_bar.set_label('水分浓度 / (kg/kg)')
-    fig.savefig(out/'第四问结果图.png',dpi=180)
+    fig.savefig(out/'图14_第四问收缩水分场.png',dpi=180)
     plt.close(fig)
 
 def main():
