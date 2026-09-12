@@ -25,6 +25,9 @@ DATA = PACKAGE / 'data'
 OUT.mkdir(parents=True, exist_ok=True)
 if str(HERE) not in sys.path:
     sys.path.insert(0, str(HERE))
+if str(HERE.parent) not in sys.path:
+    sys.path.insert(0, str(HERE.parent))
+from kirchhoff_flux import moisture_face
 from boundary_stage import build_boundaries
 R, H, HM = 0.02, 25.0, 8e-7
 T0, C0 = 28.0, 2.55
@@ -98,7 +101,8 @@ class CoupledModel:
         fc = np.empty_like(ft)
         ft[0] = fc[0] = 0
         ft[1:-1] = self.factor * (k[:-1] + k[1:]) / 2 * np.diff(T)
-        fc[1:-1] = self.factor * (d[:-1] + d[1:]) / 2 * np.diff(C)
+        dface, *_ = moisture_face(T[:-1], T[1:], C[:-1], C[1:], properties)
+        fc[1:-1] = self.factor * dface * np.diff(C)
         ft[-1] = R * H * (ta - T[-1])
         fc[-1] = R * HM * (ca - C[-1])
         return np.r_[np.diff(ft) / (self.w * b), np.diff(fc) / self.w, fc[-1] / self.area]
@@ -113,16 +117,18 @@ class CoupledModel:
         T, C = state[:m], state[m:2*m]
         b, k, d, bc, kc, dc, dt = properties(T, C)
         delta_t, delta_c = np.diff(T), np.diff(C)
-        kface, dface = (k[:-1] + k[1:]) / 2, (d[:-1] + d[1:]) / 2
+        kface = (k[:-1] + k[1:]) / 2
+        dface, dcl, dcr, dtl, dtr = moisture_face(
+            T[:-1], T[1:], C[:-1], C[1:], properties)
         factor = self.factor
         jtt = self.flux_jacobian(-factor*kface, factor*kface, -R*H, self.w*b)
         jtc = self.flux_jacobian(factor*0.5*kc[:-1]*delta_t,
                                 factor*0.5*kc[1:]*delta_t, 0.0, self.w*b)
         jtc -= diags(self.rhs(t, state)[:m] * bc / b, format='csr')
-        jcc = self.flux_jacobian(factor*(0.5*dc[:-1]*delta_c-dface),
-                                factor*(0.5*dc[1:]*delta_c+dface), -R*HM, self.w)
-        jct = self.flux_jacobian(factor*0.5*dt[:-1]*delta_c,
-                                factor*0.5*dt[1:]*delta_c, 0.0, self.w)
+        jcc = self.flux_jacobian(factor*(dcl*delta_c-dface),
+                                factor*(dcr*delta_c+dface), -R*HM, self.w)
+        jct = self.flux_jacobian(factor*dtl*delta_c,
+                                factor*dtr*delta_c, 0.0, self.w)
         return bmat([[jtt, jtc, None], [jct, jcc, None],
                      [self.zero_row, self.balance_c, csr_matrix((1, 1))]], format='csc')
 
@@ -375,7 +381,8 @@ def main():
         T=result['T'], C=result['C'], mean_T=result['mean_T'], mean_C=result['mean_C'])
     initial_props = properties(np.array([T0]), np.array([C0]))
     final_props = properties(result['T'][-1], result['C'][-1])
-    summary = {'model': 'Appendix 3 throughout; 1D radial; effective moisture Robin boundary; no latent heat',
+    summary = {'model': 'Appendix 3 throughout; 1D radial; Kirchhoff moisture flux; effective moisture Robin boundary; no latent heat',
+               'moisture_face_flux': '8-point Gauss-Legendre Kirchhoff average in C at arithmetic face temperature',
                'input_sha256': hashlib.sha256((DATA/'附件1.xlsx').read_bytes()).hexdigest(),
                'duration_s': END_TIME, 'grid_intervals': args.grids[-1],
                'rtol': 2e-10, 'atol': 2e-12, 'max_step_s': 5,

@@ -1,0 +1,132 @@
+{
+  "q1": {
+    "method_name": "stretched_exp",
+    "family": "初值固定的拉伸指数模型",
+    "fit_window_s": 1800.0,
+    "series": {
+      "T_infty_C": {
+        "initial_value": 28.0,
+        "amplitude": 27.327953305886698,
+        "tau_h": 0.7269966573523836,
+        "exponent": 1.0429162956875138,
+        "fit_rmse": 0.10430647269632129,
+        "fit_max_abs_error": 0.1873306874991698,
+        "q1_rmse": 0.10430647269632129,
+        "q1_max_abs_error": 0.1873306874991698,
+        "value_at_1800_s": 41.43878782440637
+      },
+      "C_infty_kg_per_kg": {
+        "initial_value": 0.01963,
+        "amplitude": 0.06247821019252533,
+        "tau_h": 1.9242081747143513,
+        "exponent": 1.0519591170021025,
+        "fit_rmse": 6.733487462511521e-05,
+        "fit_max_abs_error": 0.00020141152193267273,
+        "q1_rmse": 6.733487462511521e-05,
+        "q1_max_abs_error": 0.00020141152193267273,
+        "value_at_1800_s": 0.033072753839712345
+      }
+    }
+  },
+  "q2_q4": {
+    "mode": "stretched_exp_plus_independent_constant_stages",
+    "fit_endpoint_policy": "before_each_transition",
+    "fit_endpoint_temperature_s": 4980.0,
+    "fit_endpoint_moisture_s": 6480.0,
+    "transition_s": 600.0,
+    "phase_temperature": {
+      "phase_s": 5280.0,
+      "window_s": 1800.0,
+      "persist_windows": 3,
+      "range_tol": 0.7199999999999989,
+      "slope_tol": 0.00039999999999999937,
+      "plateau_mean": 49.88579738562092,
+      "plateau_std": 0.24418245334060337,
+      "smoothing_window_points": 11,
+      "sigma_residual": 0.1808530083916178,
+      "resolution_scale": 0.17999999999999972,
+      "windows": [
+        {
+          "start_s": 5280.0,
+          "range": 0.7019254079254154,
+          "slope": 0.000349232570744671
+        },
+        {
+          "start_s": 7140.0,
+          "range": 0.2735431235431278,
+          "slope": 0.0001130717691806432
+        },
+        {
+          "start_s": 9000.0,
+          "range": 0.23356876456875852,
+          "slope": 5.520689212221654e-05
+        }
+      ]
+    },
+    "phase_moisture": {
+      "phase_s": 6780.0,
+      "window_s": 1800.0,
+      "persist_windows": 3,
+      "range_tol": 0.0008599999999999997,
+      "slope_tol": 4.777777777777776e-07,
+      "plateau_mean": 0.04982109375,
+      "plateau_std": 0.0003401950213613585,
+      "smoothing_window_points": 11,
+      "sigma_residual": 0.00017006700699280928,
+      "resolution_scale": 0.0002149999999999999,
+      "windows": [
+        {
+          "start_s": 6780.0,
+          "range": 0.0008256177156177186,
+          "slope": 4.2861884978820226e-07
+        },
+        {
+          "start_s": 8640.0,
+          "range": 0.00038191142191142113,
+          "slope": 1.4159460611073721e-07
+        },
+        {
+          "start_s": 10500.0,
+          "range": 0.00023636363636363872,
+          "slope": 3.4280303030304556e-08
+        }
+      ]
+    },
+    "phase_gap_s": 1500.0,
+    "transition_temperature": {
+      "center_s": 5280.0,
+      "left_s": 4980.0,
+      "right_s": 5580.0,
+      "width_s": 600.0
+    },
+    "transition_moisture": {
+      "center_s": 6780.0,
+      "left_s": 6480.0,
+      "right_s": 7080.0,
+      "width_s": 600.0
+    },
+    "plateau_temperature": 49.88579738562092,
+    "plateau_moisture": 0.04982109375,
+    "fit_temperature": {
+      "method": "stretched_exp",
+      "endpoint_s": 4980.0,
+      "initial_value": 28.0,
+      "amplitude": 22.30767074977149,
+      "tau_s": 1930.619517994692,
+      "exponent": 1.1286535503449402,
+      "rmse": 0.12769797222834495,
+      "max_abs": 0.26616044620348234
+    },
+    "fit_moisture": {
+      "method": "stretched_exp",
+      "endpoint_s": 6480.0,
+      "initial_value": 0.01963,
+      "amplitude": 0.03103857061497155,
+      "tau_s": 2790.9224249236777,
+      "exponent": 1.2376836987465776,
+      "rmse": 0.00018027960268948956,
+      "max_abs": 0.00042546536829989046
+    }
+  },
+  "formal_property_functions": "AST-extracted directly; no formal solver module imported"
+}

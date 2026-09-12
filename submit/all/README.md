@@ -17,9 +17,11 @@ conda run --no-capture-output -n 2026modeling python run_all.py --quick
 conda run --no-capture-output -n 2026modeling python run_all.py
 ```
 
-完整运行会重建 `results/q1`--`results/q4` 下的 JSON、NPZ、Excel 和验证记录；预计耗时取决于机器性能。若只需重建工作簿，可运行 `python code/build_workbooks.py`；若只需检查现有结果，可运行 `python code/verify_all.py`。
+完整运行会重建 `results/q1`--`results/q4` 下的 JSON、NPZ、Excel 和验证记录，并以当前 Kirchhoff 通量模型重新计算第二问的参数敏感性、重绘图 08--09；预计耗时取决于机器性能。若只需重建工作簿，可运行 `python code/build_workbooks.py`；若只需检查现有结果，可运行 `python code/verify_all.py`。
 
 第四题求解器还会在 `results/q4/` 生成半径连续表示方法比较表 `radius_method_comparison.csv`、原始半径散点图和候选方法比较图，并由总入口同步到 `figures/q4/`。
+
+四问的水分内部界面统一采用 Kirchhoff 通量：第一问沿相邻节点的含水率区间积分 `D(C)`；第二至第四问先取界面温度 `(T_i+T_{i+1})/2`，再沿含水率区间积分 `D(T_face,C)`。积分使用 8 点 Gauss--Legendre 求积，解析 Jacobian 使用同一通量的端点导数。导热系数 `k` 仍采用相邻节点算术平均。
 
 完整模式使用报告对应的收敛网格：第一问 N=800、1600、3200、6400，第二问 N=200、300、400，第三、四问分别 N=220、300；边界处理由 `run_all.py` 固定为第一问拟合 0--1800 s，第二至第四问使用完整 0--14400 s 记录识别稳定阶段，再将温度和环境水分浓度分别拟合到稳定分界点（5280 s、6780 s）。第二至第四问以各自稳定分界点作为过渡点1，在后续一个 1800 s 采样步长内平滑接入尾段均值，过渡区分别为 5280--7080 s 和 6780--8580 s，不取共同分界点。`--quick` 仅用于快速检查链路，不替代正式结果。
 
