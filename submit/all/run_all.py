@@ -61,7 +61,8 @@ def copy_main_figures() -> None:
         "q1": ["图05_第一问温度水分场.png", "图01_原始环境边界散点.png",
                "图02_拉伸指数最终拟合.png"],
         "q2": ["图10_第二问温度水分场.png", "图06_边界独立稳定分界.png",
-               "图07_分段环境边界拟合.png"],
+               "图07_分段环境边界拟合.png", "图08_拟合终点比较.png",
+               "图09_第二问参数敏感性.png"],
         "q3": ["图11_第三问干燥结果.png"],
         "q4": ["图14_第四问收缩水分场.png", "图12_半径原始散点.png",
                "图13_半径插值方法比较.png"],
@@ -103,6 +104,10 @@ def main() -> None:
     run(CODE / "q1" / "export_result1.py")
     run(CODE / "q2" / "solve_q2.py", "--grids", *map(str, q2_grids),
         "--boundary-mode", "staged", *common)
+    if args.quick:
+        run(CODE / "q2" / "run_sensitivity.py", "--endpoint-only")
+    else:
+        run(CODE / "q2" / "run_sensitivity.py", "--grid", "200")
     run(CODE / "q2" / "export_result2.py")
     run(CODE / "q3" / "solve_q3.py", "--grids", *map(str, q3_grids),
         "--boundary-mode", "staged", *common, *q3_extra)
@@ -110,6 +115,7 @@ def main() -> None:
         "--boundary-mode", "staged", *common, *q4_extra)
     run(CODE / "build_workbooks.py")
     copy_main_figures()
+    run(CODE / "q2" / "verify_result2.py")
     run(CODE / "q3" / "verify_result3.py")
     run(CODE / "q4" / "verify_result4.py")
     run(CODE / "verify_all.py")

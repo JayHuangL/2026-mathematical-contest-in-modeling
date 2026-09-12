@@ -236,7 +236,8 @@ def main():
             match=result['t']<=10800
             for field in ['T','C']:
                 q2_diff[field]=float(np.max(abs(result[field][match]-reference[field][result['t'][match].astype(int)])))
-    summary={'model':'same equations as Q2; graded radial finite volumes',
+    summary={'model':'same equations as Q2; Kirchhoff moisture flux; graded radial finite volumes',
+             'moisture_face_flux':'inherited from Q2: 8-point Gauss-Legendre Kirchhoff average in C at arithmetic face temperature',
              'grid_mapping':'r=R*(1-exp(-4*x))/(1-exp(-4)), x=i/N',
              'output_interpolation':'PCHIP',
              'input_sha256':hashlib.sha256((PACKAGE/'data'/'附件1.xlsx').read_bytes()).hexdigest(),

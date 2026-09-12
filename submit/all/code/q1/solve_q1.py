@@ -11,6 +11,7 @@ import json
 import time
 import zipfile
 import xml.etree.ElementTree as ET
+import sys
 
 import numpy as np
 from scipy.integrate import solve_ivp
@@ -23,6 +24,9 @@ except ImportError:  # The standard-library reader below keeps this solver repro
 
 HERE = Path(__file__).resolve().parent
 PACKAGE = HERE.parent.parent
+if str(HERE.parent) not in sys.path:
+    sys.path.insert(0, str(HERE.parent))
+from kirchhoff_flux import scalar_face
 OUT = PACKAGE / 'results' / 'q1'
 INPUT = PACKAGE / 'data' / '附件1.xlsx'
 OUT.mkdir(parents=True, exist_ok=True)
@@ -135,7 +139,7 @@ def solve_field(n, field, environment, rtol=2e-10, atol=2e-12, max_step=5.0,
     """N intervals, N+1 nodes including r=0 and r=R.
 
     Last state integrates the area-average boundary exchange for a balance check.
-    Interface diffusion coefficients use arithmetic averaging; all fluxes telescope.
+    Moisture interfaces use the Kirchhoff flux; all fluxes telescope.
     """
     assert n % 20 == 0
     r = np.linspace(0, R, n + 1)
@@ -159,10 +163,13 @@ def solve_field(n, field, environment, rtol=2e-10, atol=2e-12, max_step=5.0,
 
     def rhs(t, state):
         u = state[:-1]
-        d, _ = coefficients(u)
         flux = np.empty(n + 2)
         flux[0] = 0.0
-        flux[1:-1] = factor * (d[:-1] + d[1:]) / 2 * np.diff(u)
+        if field == 'T':
+            face = np.full(n, ALPHA)
+        else:
+            face, _, _ = scalar_face(u[:-1], u[1:], coefficients)
+        flux[1:-1] = factor * face * np.diff(u)
         ambient = boundary(t, column) if boundary is not None else np.interp(
             t, environment[:, 0], environment[:, column])
         flux[-1] = R * beta * (ambient - u[-1])
@@ -170,11 +177,14 @@ def solve_field(n, field, environment, rtol=2e-10, atol=2e-12, max_step=5.0,
 
     def jac(t, state):
         u = state[:-1]
-        d, dp = coefficients(u)
-        df = (d[:-1] + d[1:]) / 2
         delta = np.diff(u)
-        left = factor * (0.5 * dp[:-1] * delta - df)
-        right = factor * (0.5 * dp[1:] * delta + df)
+        if field == 'T':
+            df = np.full(n, ALPHA)
+            df_left = df_right = np.zeros(n)
+        else:
+            df, df_left, df_right = scalar_face(u[:-1], u[1:], coefficients)
+        left = factor * (df_left * delta - df)
+        right = factor * (df_right * delta + df)
         main = np.r_[left, -R * beta] - np.r_[0.0, right]
         matrix = diags((-left / volumes[1:], main / volumes, right / volumes[:-1]),
                        offsets=(-1, 0, 1), format='csr')
@@ -537,7 +547,8 @@ def main():
                'T': np.round(rt['values'][1:], 4).tolist(),
                'C': np.round(rc['values'][1:], 4).tolist()}
     (OUT / 'result1_data.json').write_text(json.dumps(payload, ensure_ascii=False), encoding='utf-8')
-    summary = {'model': '1D radial; effective Robin moisture boundary; no latent heat',
+    summary = {'model': '1D radial; Kirchhoff moisture flux; effective Robin moisture boundary; no latent heat',
+               'moisture_face_flux': '8-point Gauss-Legendre Kirchhoff average in C',
                'alpha_m2_s': ALPHA, 'D_initial_m2_s': float(7e-9 * np.exp(-0.89 / 2.55)),
                'grid_intervals': args.grids[-1], 'rtol': 2e-10, 'atol': 2e-12,
                'max_step_s': 5, 'boundary': boundary_info,

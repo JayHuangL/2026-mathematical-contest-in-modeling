@@ -18,6 +18,9 @@ OUT=PACKAGE/'results'/'q4'
 OUT.mkdir(parents=True,exist_ok=True)
 if str(HERE) not in sys.path:
     sys.path.insert(0,str(HERE))
+if str(HERE.parent) not in sys.path:
+    sys.path.insert(0,str(HERE.parent))
+from kirchhoff_flux import moisture_face
 from boundary_stage import build_boundaries
 R0,H,HM,T0,C0=.02,25.,8e-7,28.,2.55
 OUTPUT_R=np.arange(20)*.001
@@ -197,7 +200,8 @@ class Model:
         fc=np.empty_like(ft)
         ft[0]=fc[0]=0
         ft[1:-1]=self.factor*(k[:-1]+k[1:])/2*np.diff(T)
-        fc[1:-1]=self.factor*(D[:-1]+D[1:])/2*np.diff(C)
+        Df,*_=moisture_face(T[:-1],T[1:],C[:-1],C[1:],self.material)
+        fc[1:-1]=self.factor*Df*np.diff(C)
         ft[-1]=R*H*(ta-T[-1])
         fc[-1]=R*HM*(ca-C[-1])
         return np.r_[np.diff(ft)/(R*R*self.w*b),np.diff(fc)/(R*R*self.w),2*HM/R*(ca-C[-1])]
@@ -211,12 +215,13 @@ class Model:
         R=self.R(t)
         f=self.factor
         dT,dC=np.diff(T),np.diff(C)
-        kf,Df=(k[:-1]+k[1:])/2,(D[:-1]+D[1:])/2
+        kf=(k[:-1]+k[1:])/2
+        Df,Dcl,Dcr,Dtl,Dtr=moisture_face(T[:-1],T[1:],C[:-1],C[1:],self.material)
         tt=self.block(-f*kf,f*kf,-R*H,R*R*self.w*b)
         tc=self.block(.5*f*kc[:-1]*dT,.5*f*kc[1:]*dT,0.,R*R*self.w*b)
         tc-=diags(self.rhs(t,y)[:m]*bc/b,format='csr')
-        cc=self.block(f*(.5*Dc[:-1]*dC-Df),f*(.5*Dc[1:]*dC+Df),-R*HM,R*R*self.w)
-        ct=self.block(.5*f*Dt[:-1]*dC,.5*f*Dt[1:]*dC,0.,R*R*self.w)
+        cc=self.block(f*(Dcl*dC-Df),f*(Dcr*dC+Df),-R*HM,R*R*self.w)
+        ct=self.block(f*Dtl*dC,f*Dtr*dC,0.,R*R*self.w)
         fluxrow=csr_matrix(([-2*HM/R],([0],[m-1])),shape=(1,m))
         return bmat([[tt,tc,None],[ct,cc,None],[self.zero,fluxrow,csr_matrix((1,1))]],format='csc')
 
@@ -420,7 +425,8 @@ def main():
              comparisons.append({'case':label,'N':800,'event_h':c['event_s']/3600})
     table_i=r['table_indices']
     table_C=r['C'][table_i][:,[0,5,10,20]]
-    summary={'model':'homogeneous radial shrinkage; Appendix 4; material coordinates',
+    summary={'model':'homogeneous radial shrinkage; Appendix 4; material coordinates; Kirchhoff moisture flux',
+             'moisture_face_flux':'8-point Gauss-Legendre Kirchhoff average in C at arithmetic face temperature',
               'environment_sha256':hashlib.sha256((PACKAGE/'data'/'附件1.xlsx').read_bytes()).hexdigest(),
               'radius_sha256':hashlib.sha256((PACKAGE/'data'/'附件2.xlsx').read_bytes()).hexdigest(),
               'R_interpolation':a.radius_method+'; hold last after 72 h','tail_T':float(env[-1,1]),'tail_C':float(env[-1,2]),

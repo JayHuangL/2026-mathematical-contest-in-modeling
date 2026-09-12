@@ -86,9 +86,8 @@
 | \(u_i\) | 统一扩散方程在节点 \(i\) 的离散未知量 | 可代表 \(T_i\) 或 \(C_i\) |
 | \(a\) 或 \(a_{i+1/2}\) | 统一扩散方程中的扩散系数及其界面值 | 温度方程中代表 \(\alpha\)，含水率方程中代表 \(D\) |
 | \(F_{i+1/2}\) | 统一扩散方程在界面 \(i+1/2\) 的离散通量变量 | 单位随所离散方程而定 |
-| \(F^T_{i+1/2}\) | 材料坐标下的界面导热通量变量 | W/m |
-| \(F^C_{i+1/2}\) | 材料坐标下的界面水分扩散通量变量 | m²/s |
-| \(F_s^T,F_s^C\) | 移动表面处的离散换热、传质通量变量 | 分别与 \(F^T,F^C\) 同单位 |
+| \(F^T_{i+1/2}\) | 温度方程在界面 \(i+1/2\) 的离散导热通量变量（已约去公共因子 \(2\pi L\)） | W/m |
+| \(F^C_{i+1/2}\) | 含水率方程在界面 \(i+1/2\) 的离散水分通量变量（已约去公共因子 \(2\pi L\)） | m²/s |
 | \(\boldsymbol y(t)\) | 由全部温度和含水率节点值组成的半离散状态向量 | 混合单位向量 |
 | \(\boldsymbol f(t,\boldsymbol y)\) | 半离散常微分方程组的右端函数 | 与对应状态量每秒同单位 |
 | \(\boldsymbol J=\partial\boldsymbol f/\partial\boldsymbol y\) | 隐式时间积分所用的稀疏Jacobian矩阵 | 各元素单位由对应变量决定 |
@@ -133,7 +132,15 @@ q_r=-k\frac{\partial T}{\partial r}.
 \tag{2}
 \]
 
-问题1中 \(\rho\)、\(c_p\)、\(k\) 均为常数。令热扩散率 \(\alpha=k/(\rho c_p)\)，式（2）也可写为
+问题1中 \(\rho\)、\(c_p\)、\(k\) 均为常数，取
+
+\[
+\rho=820\ \mathrm{kg/m^3},\qquad
+c_p=2600\ \mathrm{J/(kg\cdot K)},\qquad
+k=0.36\ \mathrm{W/(m\cdot K)}.
+\]
+
+令热扩散率 \(\alpha=k/(\rho c_p)\)，式（2）也可写为
 
 \[
 \frac{\partial T}{\partial t}
@@ -257,12 +264,135 @@ F_{i+1/2}
 \frac{u_{i+1}-u_i}{\Delta r}.
 \]
 
-温度方程中 \(a_{i+1/2}=\alpha\)；水分方程中采用相邻节点扩散系数的算术平均，
+下标 \(i+1/2\) 表示控制体界面。温度方程中 \(a_{i+1/2}=\alpha\)。对于水分方程，\(a=D(C)\) 随含水率变化，不能简单地用某一个节点值代替界面处的扩散系数。下面从连续通量出发构造界面离散式。
+
+在节点 \(r_i\) 与 \(r_{i+1}\) 之间，令
 
 \[
-a_{i+1/2}
-=\frac{D(C_i)+D(C_{i+1})}{2}.
+\Delta r=r_{i+1}-r_i,
+\qquad
+\Delta C=C_{i+1}-C_i,
 \]
+
+并在该节点段上采用线性含水率路径
+
+\[
+C(s)=C_i+s\Delta C,
+\qquad 0\le s\le1.
+\]
+
+于是
+
+\[
+\frac{\mathrm dC}{\mathrm dr}\approx\frac{\Delta C}{\Delta r}.
+\]
+
+连续水分通量项为 \(rD(C)C_r\)。将 \(C(s)\) 代入后，界面 \(r_{i+1/2}\) 处的通量近似为
+
+\[
+\begin{aligned}
+F^C_{i+1/2}
+&\approx r_{i+1/2}\frac{\Delta C}{\Delta r}
+\int_0^1D\!\left(C_i+s\Delta C\right)\,\mathrm ds\\
+&=r_{i+1/2}D^{\mathrm K}_{i+1/2}\,
+\frac{C_{i+1}-C_i}{\Delta r},
+\end{aligned}
+\]
+
+其中定义 Kirchhoff 界面平均扩散系数
+
+\[
+\boxed{
+D^{\mathrm K}_{i+1/2}
+=\int_0^1D\!\left(C_i+s(C_{i+1}-C_i)\right)\,\mathrm ds
+}.
+\]
+
+该定义确实是一个平均值：积分区间长度为1，因此当 \(D(C)\) 为常数时，\(D^{\mathrm K}_{i+1/2}\) 就等于该常数；当 \(D(C)>0\) 时，界面平均也保持为正。进一步定义 Kirchhoff 变换
+
+\[
+\Psi(C)=\int^C D(\eta)\,\mathrm d\eta.
+\]
+
+由变量代换 \(\eta=C_i+s\Delta C\)、\(\mathrm d\eta=\Delta C\,\mathrm ds\)，当 \(\Delta C\ne0\) 时有
+
+\[
+\begin{aligned}
+D^{\mathrm K}_{i+1/2}
+&=\frac{1}{C_{i+1}-C_i}
+\int_{C_i}^{C_{i+1}}D(\eta)\,\mathrm d\eta\\
+&=\frac{\Psi(C_{i+1})-\Psi(C_i)}{C_{i+1}-C_i}.
+\end{aligned}
+\]
+
+因此，界面通量也可以写成 Kirchhoff 变换的差商形式
+
+\[
+\boxed{
+F^C_{i+1/2}
+=r_{i+1/2}
+\frac{\Psi(C_{i+1})-\Psi(C_i)}{\Delta r}
+}.
+\]
+
+这里的 \(i+1/2\) 表示空间界面，而 \(\Psi(C_i)\)、\(\Psi(C_{i+1})\) 是相邻两个节点含水率对应的 Kirchhoff 变换值。它们不是 \(\Psi\) 在两个空间界面含水率上的差商。
+
+实际计算中不显式调用 \(\Psi\) 的特殊函数表达式，而是在 \([0,1]\) 上采用8点 Gauss--Legendre 求积：若 \(s_j\) 和 \(\omega_j\) 分别为变换到 \([0,1]\) 后的求积节点和权重，则
+
+\[
+D^{\mathrm K}_{i+1/2}
+\approx
+\sum_{j=1}^{8}\omega_jD\!\left(C_i+s_j(C_{i+1}-C_i)\right).
+\]
+
+该求积对本文使用的光滑物性函数具有足够高的精度；它是对 Kirchhoff 积分的数值计算，不改变 Kirchhoff 平均的定义。当 \(C_{i+1}=C_i\) 时，不使用差商形式，而由积分定义直接得到连续极限
+
+\[
+D^{\mathrm K}_{i+1/2}=D(C_i),
+\]
+
+从而避免相邻含水率很接近时的差值相消和小量相除问题。
+
+为构造含水率方程的解析 Jacobian，对上述积分在节点含水率处求偏导。沿积分路径
+
+\[
+C(s)=C_i+s(C_{i+1}-C_i)
+\]
+
+有
+
+\[
+\frac{\partial C(s)}{\partial C_i}=1-s,
+\qquad
+\frac{\partial C(s)}{\partial C_{i+1}}=s.
+\]
+
+记 \(D_C=\mathrm dD/\mathrm dC\)，将链式法则移入积分号内，得到
+
+\[
+\frac{\partial D^{\mathrm K}_{i+1/2}}{\partial C_i}
+=\int_0^1D_C\!\left(C_i+s\Delta C\right)(1-s)\,\mathrm ds,
+\qquad
+\frac{\partial D^{\mathrm K}_{i+1/2}}{\partial C_{i+1}}
+=\int_0^1D_C\!\left(C_i+s\Delta C\right)s\,\mathrm ds.
+\]
+
+数值求积使用同一组8点 Gauss--Legendre 节点计算这两个导数，因此界面通量和 Jacobian 使用完全一致的积分近似。
+
+这里不采用 \([D(C_i)+D(C_{i+1})]/2\) 的算术平均，是因为 \(D(C)\) 直接位于非线性水分通量 \(D(C)C_r\) 中。在线性含水率路径的假设下，界面通量应与
+
+\[
+\int_{C_i}^{C_{i+1}}D(\eta)\,\mathrm d\eta
+\]
+
+一致；Kirchhoff 平均正好使
+
+\[
+D^{\mathrm K}_{i+1/2}(C_{i+1}-C_i)
+=\int_{C_i}^{C_{i+1}}D(\eta)\,\mathrm d\eta.
+\]
+
+算术平均只是该积分的梯形近似，无法在离散层面严格保留上述非线性通量结构。相比之下，导热系数 \(k(C)\) 在本文中是光滑且变化较缓的经验函数，算术平均可作为界面中点值的二阶近似；\(\rho(C)\) 和 \(c_p(C)\) 则属于控制体蓄积项，直接在节点 \(i\) 处取局部值。
 
 中心对称条件对应 \(F_{-1/2}=0\)。温度和含水率的表面交换条件分别写成
 
@@ -319,9 +449,98 @@ F_{N+1/2}^{C}
 
 右端含有新时刻状态，每个时间步需要隐式求解。计算中提供稀疏解析Jacobian矩阵，以提高迭代效率。
 
-问题1最终采用 \(N=6400\) 个径向区间，即6401个节点，空间步长为 \(3.125\times10^{-6}\ \mathrm m\)。BDF相对容差和绝对容差分别取 \(2\times10^{-10}\) 和 \(2\times10^{-12}\)，最大内部步长为5 s。求解器根据误差估计自动调整内部时间步；每1 s输出一次只是结果采样要求，并不表示采用固定1 s时间步。题目规定的0.1 cm输出位置恰好落在计算节点上，因而不需要空间插值。
+例如对一阶 BDF，令
 
-为验证离散精度，依次采用800、1600、3200和6400个区间进行网格加密。最后两级网格在表格指定位置与时刻的最大差异为：温度 \(4.42\times10^{-8}\ ^\circ\mathrm C\)，含水率 \(8.71\times10^{-7}\ \mathrm{kg/kg}\)。进一步收紧时间容差后，温度和含水率最大变化分别为 \(1.10\times10^{-8}\ ^\circ\mathrm C\) 和 \(4.32\times10^{-9}\ \mathrm{kg/kg}\)，说明时间误差小于空间离散误差；整体收支残差保持在 \(10^{-14}\) 量级。
+\[
+\boldsymbol{\mathcal R}(\boldsymbol y^{n+1})
+=\boldsymbol y^{n+1}-\boldsymbol y^n
+-\Delta t\,\boldsymbol f(t_{n+1},\boldsymbol y^{n+1}),
+\]
+
+Newton 迭代所解的线性系统矩阵为
+
+\[
+\frac{\partial\boldsymbol{\mathcal R}}{\partial\boldsymbol y}
+=\boldsymbol I-\Delta t\,\boldsymbol J.
+\]
+
+高阶 BDF 只将单位矩阵系数替换为相应的主导系数；因此文中所列 \(\boldsymbol J=\partial\boldsymbol f/\partial\boldsymbol y\) 正是隐式求解器组装 Newton 线性系统所需的空间导数部分。
+
+具体到第 \(i\) 个控制体，若
+
+\[
+f_i(\boldsymbol y)
+=\frac{F_{i+1/2}(\boldsymbol y)-F_{i-1/2}(\boldsymbol y)}{w_i},
+\]
+
+则右端 Jacobian 的第 \(i\) 行由
+
+\[
+\frac{\partial f_i}{\partial y_j}
+=\frac{1}{w_i}\left(
+\frac{\partial F_{i+1/2}}{\partial y_j}
+-\frac{\partial F_{i-1/2}}{\partial y_j}
+\right)
+\]
+
+得到。若把 \(\Delta t\,f_i\) 视为单独的映射，则其导数就是上式再乘以 \(\Delta t\)；但对一阶 BDF 残差进行 Newton 迭代时，实际矩阵为
+
+\[
+\frac{\partial\mathcal R_i}{\partial y_j}
+=\delta_{ij}
+-\frac{\Delta t}{w_i}\left(
+\frac{\partial F_{i+1/2}}{\partial y_j}
+-\frac{\partial F_{i-1/2}}{\partial y_j}
+\right).
+\]
+
+其中 \(\boldsymbol I\) 为单位矩阵，\(\delta_{ij}\) 是 Kronecker delta（\(i=j\) 时为1，否则为0）。因此，论文后面列出的界面通量导数先用于组装右端 Jacobian，再与时间离散产生的单位矩阵项合成为 Newton 线性系统矩阵。
+
+问题1的温度场和含水率场彼此解耦，因此两个场分别形成一个三对角空间 Jacobian，而不出现热湿交叉分块。下面直接对前述界面通量 \(F_{i+1/2}\) 求导；继续用 \(u=T\) 表示温度场、\(u=C\) 表示含水率场，并记 \(\Delta u=u_{i+1}-u_i\)。令
+
+\[
+a_i^{\mathrm L}
+=\frac{\partial a_{i+1/2}}{\partial u_i},
+\qquad
+a_i^{\mathrm R}
+=\frac{\partial a_{i+1/2}}{\partial u_{i+1}},
+\]
+
+则
+
+\[
+\frac{\partial F_{i+1/2}}{\partial u_i}
+=\frac{r_{i+1/2}}{\Delta r}
+\left(a_i^{\mathrm L}\Delta u-a_{i+1/2}\right),
+\qquad
+\frac{\partial F_{i+1/2}}{\partial u_{i+1}}
+=\frac{r_{i+1/2}}{\Delta r}
+\left(a_i^{\mathrm R}\Delta u+a_{i+1/2}\right).
+\]
+
+温度方程中 \(a_{i+1/2}=\alpha\) 为常数，故 \(a_i^{\mathrm L}=a_i^{\mathrm R}=0\)；含水率方程中两端导数由本节前面 Kirchhoff 平均的端点导数公式给出。对这些端点导数中的积分，使用同一组8点 Gauss--Legendre 节点 \(s_j\) 和权重 \(\omega_j\)：
+
+\[
+\frac{\partial D^{\mathrm K}_{i+1/2}}{\partial C_i}
+\approx\sum_{j=1}^{8}\omega_jD_C(C_i+s_j\Delta C)(1-s_j),
+\qquad
+\frac{\partial D^{\mathrm K}_{i+1/2}}{\partial C_{i+1}}
+\approx\sum_{j=1}^{8}\omega_jD_C(C_i+s_j\Delta C)s_j.
+\]
+
+将相邻两个界面的上述导数分别除以控制体权重并相减，即得到节点右端的对角及上下对角元素；表面 Robin 通量只改变最外节点的对角元素。由此，问题1每个场的 Jacobian 都是稀疏三对角矩阵，BDF 的隐式 Newton 迭代不需要求解热湿耦合系统。
+
+若将表面通量统一写成 \(F_{N+1/2}=R\beta(u_a-u_N)\)，其中 \(\beta= h/(\rho c_p)\)（温度场）或 \(\beta=h_m\)（含水率场），则它对最外节点右端的边界贡献为
+
+\[
+\left.\frac{\partial f_N}{\partial u_N}\right|_{\mathrm{surface}}
+=-\frac{R\beta}{w_N}.
+\]
+
+这就是三对角矩阵最外侧对角元的表面边界修正。
+
+问题1在 \(0\le t\le1800\ \mathrm s\) 内积分，最终采用 \(N=6400\) 个径向区间，即6401个节点，空间步长为 \(3.125\times10^{-6}\ \mathrm m\)。BDF相对容差和绝对容差分别取 \(2\times10^{-10}\) 和 \(2\times10^{-12}\)，最大内部步长为5 s。求解器根据误差估计自动调整内部时间步；每1 s输出一次只是结果采样要求，并不表示采用固定1 s时间步。题目规定的0.1 cm输出位置恰好落在计算节点上，因而不需要空间插值。
+
 
 ## 3 问题2模型建立与求解
 
@@ -378,15 +597,21 @@ D(C,T)=2.4\times10^{-3}
 
 ### 3.2 问题2数值求解
 
-问题2沿用问题1的径向有限体积框架，但不再用热扩散率将温度方程化为常系数形式，而是分别保留局部储热系数 \(\rho_i c_{p,i}\) 和导热系数 \(k_i\)。在内部界面 \(i+1/2\) 处，取
+问题2沿用问题1的径向有限体积框架，但不再用热扩散率将温度方程化为常系数形式，而是分别保留局部储热系数 \(\rho_i c_{p,i}\) 和导热系数 \(k_i\)。由于 \(\rho(C)\)、\(c_p(C)\) 和 \(k(C)\) 均为连续光滑函数，蓄积项直接使用节点 \(i\) 的局部值，导热系数在界面处采用算术平均
 
 \[
 k_{i+1/2}=\frac{k_i+k_{i+1}}2,
-\qquad
-D_{i+1/2}=\frac{D_i+D_{i+1}}2,
 \]
 
-并定义温度和含水率的界面通量变量
+含水率界面先取 \(T_{i+1/2}=(T_i+T_{i+1})/2\)，再作 Kirchhoff 平均
+
+\[
+D^{\mathrm K}_{i+1/2}=\int_0^1D\!\left(T_{i+1/2},C_i+s(C_{i+1}-C_i)\right)\mathrm ds.
+\]
+
+这里的 \(D^{\mathrm K}_{i+1/2}\) 与问题1具有相同的积分含义，只是扩散系数还依赖界面算术平均温度。它保留了 \(D(C,T)C_r\) 的非线性积分结构，而 \(k_{i+1/2}\) 的算术平均是对光滑导热系数中点值的二阶近似。
+
+由此定义温度和含水率的界面通量变量
 
 \[
 F^T_{i+1/2}
@@ -396,7 +621,7 @@ F^T_{i+1/2}
 
 \[
 F^C_{i+1/2}
-=r_{i+1/2}D_{i+1/2}
+=r_{i+1/2}D^{\mathrm K}_{i+1/2}
 \frac{C_{i+1}-C_i}{\Delta r}.
 \]
 
@@ -436,11 +661,218 @@ w_i\frac{\mathrm dC_i}{\mathrm dt}
 \end{bmatrix},
 \]
 
-再采用隐式BDF方法联立推进。每次计算 \(\boldsymbol f(t,\boldsymbol y)\) 时，均根据当前节点状态 \(T_i,C_i\) 重新计算 \(\rho_i\)、\(c_{p,i}\)、\(k_i\)、\(D_i\)，不得以全域平均温度或平均含水率代替局部物性。由于温度方程依赖含水率，含水率方程又通过 \(D(C,T)\) 依赖温度，Jacobian矩阵由温度自作用、水分自作用及两个热湿交叉作用块组成。提供完整的稀疏解析Jacobian后，隐式迭代能够同时反映变物性和双向耦合关系。
+这里的 \(\boldsymbol y\) 就是温度—含水率物理状态向量。
 
-问题2最终采用 \(N=400\) 个均匀径向区间，相对容差和绝对容差分别为 \(2\times10^{-10}\) 和 \(2\times10^{-12}\)，最大内部步长为5 s。结果按每1 s、每0.1 cm输出；输出位置均为计算节点。
+再采用与问题1相同的隐式 BDF 方法联立推进。每次计算 \(\boldsymbol f(t,\boldsymbol y)\) 时，均根据当前节点状态 \(T_i,C_i\) 重新计算 \(\rho_i\)、\(c_{p,i}\)、\(k_i\)、\(D_i\)，不得以全域平均温度或平均含水率代替局部物性。将物理状态右端记为
 
-数值验证采用200、300和400个区间进行网格比较。300区间加密到400区间后，论文表格所用位置与时刻的最大差异为：温度 \(2.55\times10^{-6}\ ^\circ\mathrm C\)，含水率 \(1.93\times10^{-6}\ \mathrm{kg/kg}\)。将时间容差再收紧一个数量级并减小最大步长后，温度和含水率最大变化分别为 \(5.05\times10^{-7}\ ^\circ\mathrm C\) 和 \(1.88\times10^{-8}\ \mathrm{kg/kg}\)。解析Jacobian的复步长相对误差约为 \(4.02\times10^{-16}\)，热量与水分离散收支残差均接近机器精度。
+\[
+\boldsymbol f=
+\begin{bmatrix}\boldsymbol f^T\\ \boldsymbol f^C\end{bmatrix}.
+\]
+
+隐式迭代所需的物理状态 Jacobian 写成热湿耦合的四分块形式。先记
+
+\[
+b_i=\rho_i c_{p,i},\qquad
+b_i'=\frac{\mathrm d(\rho c_p)}{\mathrm dC}(C_i),\qquad
+k_i'=\frac{\mathrm dk}{\mathrm dC}(C_i),
+\]
+
+并用 \(D_C=\partial D/\partial C\)、\(D_T=\partial D/\partial T\) 表示扩散系数的两个偏导。于是
+
+\[
+\boldsymbol J
+=\frac{\partial\boldsymbol f}{\partial\boldsymbol y}
+=
+\begin{bmatrix}
+\boldsymbol J_{TT} & \boldsymbol J_{TC}\\
+\boldsymbol J_{CT} & \boldsymbol J_{CC}
+\end{bmatrix}.
+\]
+
+这里第一个下标表示右端方程的类型，第二个下标表示被求导的状态变量，例如
+
+\[
+\boldsymbol J_{TC}=\frac{\partial\boldsymbol f^T}{\partial\boldsymbol C},
+\qquad
+\boldsymbol J_{CT}=\frac{\partial\boldsymbol f^C}{\partial\boldsymbol T}.
+\]
+
+因此，矩阵的行对应方程，列对应状态变量。
+
+为避免把“界面通量的偏导”和“控制体右端的偏导”混在一起，下面先计算 \(F^T,F^C\) 对节点变量的导数，再用
+
+\[
+\mathcal L_i^T=F^T_{i+1/2}-F^T_{i-1/2},
+\qquad
+\mathcal L_i^C=F^C_{i+1/2}-F^C_{i-1/2}
+\]
+
+组装
+
+\[
+f_i^T=\frac{\mathcal L_i^T}{w_i b_i},
+\qquad
+f_i^C=\frac{\mathcal L_i^C}{w_i}.
+\]
+
+这里的 \(w_i b_i\,\mathrm dT_i/\mathrm dt\) 是第 \(i\) 个控制体的热量蓄积项：连续方程左侧的 \(\rho c_p\,\partial T/\partial t\) 在控制体上积分后，表示该控制体内部热能随时间的变化率。含水率方程的蓄积系数为 \(w_i\)，而温度方程的蓄积系数 \(b_i=\rho_i c_{p,i}\) 随 \(C_i\) 变化，所以求 \(\partial f_i^T/\partial C_i\) 时还必须对分母 \(b_i\) 求导。
+
+**（1）温度方程对温度：\(\boldsymbol J_{TT}\)。** 对内部界面，
+
+\[
+\frac{\partial F^T_{i+1/2}}{\partial T_i}
+=-r_{i+1/2}\frac{k_{i+1/2}}{\Delta r},
+\qquad
+\frac{\partial F^T_{i+1/2}}{\partial T_{i+1}}
+=r_{i+1/2}\frac{k_{i+1/2}}{\Delta r}.
+\]
+
+因此，对 \(j=i-1,i,i+1\)，右端 Jacobian 的元素由相邻两个界面通量相减得到：
+
+\[
+\frac{\partial f_i^T}{\partial T_j}
+=\frac{1}{w_i b_i}
+\left(
+\frac{\partial F^T_{i+1/2}}{\partial T_j}
+-\frac{\partial F^T_{i-1/2}}{\partial T_j}
+\right).
+\]
+
+这构成 \(\boldsymbol J_{TT}\) 的三对角部分。
+
+**（2）温度方程对含水率：\(\boldsymbol J_{TC}\)。** 由于
+
+\[
+k_{i+1/2}=\frac{k_i+k_{i+1}}2,
+\]
+
+有
+
+\[
+\frac{\partial F^T_{i+1/2}}{\partial C_i}
+=r_{i+1/2}\frac{k'_i}{2}
+\frac{T_{i+1}-T_i}{\Delta r},
+\qquad
+\frac{\partial F^T_{i+1/2}}{\partial C_{i+1}}
+=r_{i+1/2}\frac{k'_{i+1}}{2}
+\frac{T_{i+1}-T_i}{\Delta r}.
+\]
+
+这些是热通量中由 \(k(C)\) 引起的交叉导数。除此之外，\(f_i^T\) 的分母 \(w_i b_i\) 也依赖 \(C_i\)。将通量分子与蓄积系数分开，对完整商式求导：
+
+\[
+\frac{\partial f_i^T}{\partial C_i}
+=\frac{1}{w_i b_i}\frac{\partial\mathcal L_i^T}{\partial C_i}
++\frac{\mathcal L_i^T}{w_i}
+\frac{\partial(b_i^{-1})}{\partial C_i}.
+\]
+
+第一项是热通量本身随 \(C_i\) 变化产生的贡献，第二项是蓄积系数 \(b_i\) 变化产生的贡献。由于
+
+\[
+\frac{\partial(b_i^{-1})}{\partial C_i}
+=-\frac{b_i'}{b_i^2},
+\]
+
+从而
+
+\[
+\left.\frac{\partial f_i^T}{\partial C_i}\right|_{\mathrm{storage}}
+=-\frac{\mathcal L_i^T}{w_i b_i^2}b_i'
+=-f_i^T\frac{b_i'}{b_i}.
+\]
+
+因此，\(\boldsymbol J_{TC}\) 的每个元素等于热通量对 \(C_j\) 的导数除以 \(w_i b_i\)，再在 \(j=i\) 时加上上式的蓄积项修正。
+
+**（3）含水率方程对含水率：\(\boldsymbol J_{CC}\)。** 记 \(\Delta C=C_{i+1}-C_i\)。Kirchhoff 平均的含水率端点导数直接采用问题1的链式法则。问题2中先将界面温度
+
+\[
+T_{i+1/2}=\frac{T_i+T_{i+1}}2
+\]
+
+视为当前界面的已知算术平均，于是只需把问题1中的 \(D_C(C)\) 替换为 \(D_C(T_{i+1/2},C)\)，并用同一组8点 Gauss--Legendre 节点计算这两个积分。
+
+由 \(F^C_{i+1/2}=r_{i+1/2}D^{\mathrm K}_{i+1/2}\Delta C/\Delta r\)，可得
+
+\[
+\frac{\partial F^C_{i+1/2}}{\partial C_i}
+=r_{i+1/2}\frac{
+\Delta C\,\partial_{C_i}D^{\mathrm K}_{i+1/2}
+-D^{\mathrm K}_{i+1/2}}{\Delta r},
+\qquad
+\frac{\partial F^C_{i+1/2}}{\partial C_{i+1}}
+=r_{i+1/2}\frac{
+\Delta C\,\partial_{C_{i+1}}D^{\mathrm K}_{i+1/2}
++D^{\mathrm K}_{i+1/2}}{\Delta r}.
+\]
+
+最后只需做通量差分：
+
+\[
+\frac{\partial f_i^C}{\partial C_j}
+=\frac{1}{w_i}
+\left(
+\frac{\partial F^C_{i+1/2}}{\partial C_j}
+-\frac{\partial F^C_{i-1/2}}{\partial C_j}
+\right),
+\]
+
+这给出 \(\boldsymbol J_{CC}\) 的三对角部分。
+
+**（4）含水率方程对温度：\(\boldsymbol J_{CT}\)。** 对温度求导时，界面算术平均的导数为
+
+\[
+\frac{\partial D^{\mathrm K}_{i+1/2}}{\partial T_i}
+=\frac12\int_0^1D_T(T_{i+1/2},C_i+s\Delta C)\,\mathrm ds,
+\qquad
+\frac{\partial D^{\mathrm K}_{i+1/2}}{\partial T_{i+1}}
+=\frac12\int_0^1D_T(T_{i+1/2},C_i+s\Delta C)\,\mathrm ds.
+\]
+
+再对含水率界面通量求导：
+
+\[
+\frac{\partial F^C_{i+1/2}}{\partial T_j}
+=r_{i+1/2}\frac{\Delta C}{\Delta r}
+\frac{\partial D^{\mathrm K}_{i+1/2}}{\partial T_j},
+\qquad j=i,i+1.
+\]
+
+于是
+
+\[
+\frac{\partial f_i^C}{\partial T_j}
+=\frac{1}{w_i}
+\left(
+\frac{\partial F^C_{i+1/2}}{\partial T_j}
+-\frac{\partial F^C_{i-1/2}}{\partial T_j}
+\right),
+\]
+
+这给出 \(\boldsymbol J_{CT}\)。四个分块均只连接相邻节点，因此物理状态 Jacobian 保持稀疏带状结构；右端和 Jacobian 使用同一套8点 Gauss--Legendre 节点计算 \(D^{\mathrm K}\) 及其端点导数，从而保证离散定义一致。
+
+由表面通量
+
+\[
+F^T_{N+1/2}=Rh(T_a-T_N),\qquad
+F^C_{N+1/2}=Rh_m(C_a-C_N)
+\]
+
+可知，表面项对最外节点右端的导数分别为
+
+\[
+\left.\frac{\partial f_N^T}{\partial T_N}\right|_{\mathrm{surface}}
+=-\frac{Rh}{w_Nb_N},
+\qquad
+\left.\frac{\partial f_N^C}{\partial C_N}\right|_{\mathrm{surface}}
+=-\frac{Rh_m}{w_N}.
+\]
+
+它们只修正 \(\boldsymbol J_{TT}\) 和 \(\boldsymbol J_{CC}\) 的最外侧对角元；中心零通量的导数为零。
+
+问题2在 \(0\le t\le10800\ \mathrm s\) 内积分，最终采用 \(N=400\) 个均匀径向区间，相对容差和绝对容差分别为 \(2\times10^{-10}\) 和 \(2\times10^{-12}\)，最大内部步长为5 s。时间积分结果按1 s采样保存；用于论文剖面表的报告时刻按每1800 s设置，径向输出位置按每0.1 cm设置，这些位置均为计算节点。
+
 
 ## 4 问题3模型建立与求解
 
@@ -463,7 +895,7 @@ t_*=\inf\left\{t\ge0:
 \tag{8}
 \]
 
-该判据使用全域最大值，而不是表面含水率或体积平均含水率。中心通常是最湿位置，但数值计算仍检查全部空间节点，避免在未经验证时直接把达标条件简化为中心条件。
+该判据使用全域最大值，而不是表面含水率或体积平均含水率。中心通常是最湿位置，但达标条件仍按全域最大值定义，不将其简化为中心节点条件。
 
 ### 4.2 问题3数值求解
 
@@ -476,19 +908,18 @@ r_i
 x_i=\frac{i}{N}.
 \]
 
-在该非均匀网格上，控制体界面仍取相邻节点中点，几何权重仍由 \(w_i=(b_i^2-a_i^2)/2\) 计算；界面梯度中的均匀步长 \(\Delta r\) 则替换为实际节点距离 \(r_{i+1}-r_i\)。温度和含水率仍使用同一组界面通量和隐式BDF方法联立推进。
+在该非均匀网格上，控制体界面仍取相邻节点中点，几何权重仍由 \(w_i=(b_i^2-a_i^2)/2\) 计算；界面梯度中的均匀步长 \(\Delta r\) 则替换为实际节点距离 \(r_{i+1}-r_i\)。界面含水率通量、Kirchhoff 平均及其端点导数均沿用问题2的定义和8点 Gauss--Legendre 求积，不再重复推导。问题3的物理状态 Jacobian 完全继承问题2的四分块结构，仍按“先求界面通量 \(F\) 的导数、再组装控制体右端 \(f\) 的导数”的顺序计算；唯一变化是内部几何因子由 \(r_{i+1/2}/\Delta r\) 换成 \(r_{i+1/2}/(r_{i+1}-r_i)\)。因此非均匀网格改变的是通量系数和控制体权重，不改变热湿耦合的导数结构。温度和含水率仍使用同一组界面通量和隐式BDF方法联立推进。
 
 为定位全域达标时刻，在积分过程中定义离散事件函数
 
 \[
-g_h(t)=\max_{0\le i\le N}C_i(t)-C_{\mathrm{cr}}.
+g(t)=\max_{0\le i\le N}C_i(t)-C_{\mathrm{cr}}.
 \]
 
-仅检测 \(g_h(t)\) 从正值向负值的穿越。当相邻内部时间步之间出现符号变化时，求解器利用BDF连续插值在该时间步内求解 \(g_h(t)=0\)，得到临界时刻 \(t_*\)。因此，文件每60 s输出一次只是采样要求，不会把终点时间限制为60 s的整数倍。严格判断“低于”临界值时，使用未舍入含水率，并在临界根之后继续积分至向上保留四位小数的报告时刻，确认全部节点均满足 \(C_i<C_{\mathrm{cr}}\)。
+仅检测 \(g(t)\) 从正值向负值的穿越。当相邻内部时间步之间出现符号变化时，利用BDF连续插值在该时间步内求解 \(g(t)=0\)，得到临界时刻 \(t_*\)。因此，每60 s输出一次只是采样要求，不会把终点时间限制为60 s的整数倍。严格判断“低于”临界值时，使用未舍入含水率，并在临界根之后继续积分至向上保留四位小数的报告时刻，确认全部节点均满足 \(C_i<C_{\mathrm{cr}}\)。
 
 问题3最终采用 \(N=300\) 个表面加密区间，相对容差和绝对容差分别为 \(2\times10^{-10}\) 和 \(2\times10^{-12}\)。前4 h内最大内部步长取5 s，随后放宽至300 s。固定实际位置处的输出由当前非均匀计算网格进行保形分段三次插值获得。
 
-网格由220区间加密至300区间后，达标时间变化1.626 s；进一步收紧时间容差后，达标时间仅变化0.0025 s。全过程含水率保持为正，径向分布未出现非物理反向增长，最湿位置位于中心；水分累计收支残差保持在 \(10^{-14}\) 量级。
 
 ## 5 问题4模型建立与求解
 
@@ -723,7 +1154,7 @@ D(\Theta,U)=4.2\times10^{-4}
 \tag{14}
 \]
 
-该式表明平均含水率的变化完全由表面传质通量决定，可用于检查移动边界离散的守恒一致性。
+该式表明平均含水率的变化完全由表面传质通量决定；半径变化本身不会额外产生或消灭干基含水率。
 
 ### 5.5 问题4数值求解与实际位置输出
 
@@ -754,11 +1185,13 @@ k_{i+1/2}=\frac{k_i+k_{i+1}}2,
 
 \[
 F^C_{i+1/2}
-=\xi_{i+1/2}D_{i+1/2}
+=\xi_{i+1/2}D^{\mathrm K}_{i+1/2}
 \frac{U_{i+1}-U_i}{\xi_{i+1}-\xi_i},
 \qquad
-D_{i+1/2}=\frac{D_i+D_{i+1}}2.
+D^{\mathrm K}_{i+1/2}=\int_0^1D\!\left(\frac{\Theta_i+\Theta_{i+1}}2,U_i+s(U_{i+1}-U_i)\right)\mathrm ds.
 \]
+
+这里的 \(D^{\mathrm K}_{i+1/2}\) 与问题2的定义完全相同，积分仍沿相邻节点的含水率路径进行，温度在界面处取算术平均；实际计算仍采用8点 Gauss--Legendre 求积，同时计算其对 \(\Theta_i,\Theta_{i+1},U_i,U_{i+1}\) 的端点导数。导热系数 \(k_{i+1/2}\) 采用节点算术平均，\(\rho_i c_{p,i}\) 则在控制体节点处取局部值。
 
 中心对称条件给出
 
@@ -789,7 +1222,45 @@ F^C_{N+1/2}=R(t)h_m[C_a(t)-U_N].
 \tag{15}
 \]
 
-式中的 \(R(t)^2\) 来自实际空间到材料坐标的尺度变换；表面通量中的 \(R(t)\) 与内部方程中的 \(R(t)^2\) 必须配套使用。每次计算方程右端时，先按当前时间更新半径 \(R(t)\)，再根据当前 \(\Theta_i,U_i\) 更新局部物性与界面通量。温度和含水率组成统一状态向量，采用带稀疏解析Jacobian的隐式BDF方法联立推进。
+式中的 \(R(t)^2\) 来自实际空间到材料坐标的尺度变换；表面通量中的 \(R(t)\) 与内部方程中的 \(R(t)^2\) 必须配套使用。每次计算方程右端时，先按当前时间更新半径 \(R(t)\)，再根据当前 \(\Theta_i,U_i\) 更新局部物性与界面通量。由于 \(R(t)\) 是给定的时间函数而不是状态变量，组装 Jacobian 时不对 \(R(t)\) 求状态导数；它只作为当前时间的已知系数进入各个分块。
+
+为写出物理状态的 Jacobian，令
+
+\[
+\boldsymbol y=
+\begin{bmatrix}\boldsymbol\Theta\\ \boldsymbol U\end{bmatrix},
+\qquad
+\boldsymbol f=
+\begin{bmatrix}\boldsymbol f^\Theta\\ \boldsymbol f^U\end{bmatrix},
+\]
+
+则
+
+\[
+\boldsymbol J
+=\frac{\partial\boldsymbol f}{\partial\boldsymbol y}
+=
+\begin{bmatrix}
+\boldsymbol J_{\Theta\Theta}&\boldsymbol J_{\Theta U}\\
+\boldsymbol J_{U\Theta}&\boldsymbol J_{UU}
+\end{bmatrix}.
+\]
+
+其中第一个下标表示右端方程，第二个下标表示被求导的状态变量；四个分块的含义与问题2中的 \(J_{TT},J_{TC},J_{CT},J_{CC}\) 一一对应。
+
+与问题2相比，四个分块仍按“先求界面通量 \(F\) 的导数、再组装右端 \(f\) 的导数”的顺序构造；区别在于每个内部通量导数统一乘以 \(1/R(t)^2\)，每个节点的蓄积分母分别为 \(R(t)^2w_i\rho_i c_{p,i}\) 和 \(R(t)^2w_i\)。其中，\(\boldsymbol J_{\Theta\Theta}\) 来自 \(k_{i+1/2}\) 对 \(\Theta_i,\Theta_{i+1}\) 的热通量导数；\(\boldsymbol J_{\Theta U}\) 来自 \(k(U)\) 的含水率依赖以及 \(\rho(U)c_p(U)\) 对蓄积项的导数；\(\boldsymbol J_{UU}\) 使用 Kirchhoff 平均对 \(U_i,U_{i+1}\) 的端点导数；\(\boldsymbol J_{U\Theta}\) 使用 \(D_\Theta\) 和界面算术温度对 \(\Theta_i,\Theta_{i+1}\) 的导数。移动表面的 Robin 通量还为最外节点增加表面项贡献
+
+\[
+\left.\frac{\partial f^\Theta_N}{\partial\Theta_N}\right|_{\mathrm{surface}}
+=-\frac{h}{R(t)\rho_Nc_{p,N}w_N},
+\qquad
+\left.\frac{\partial f^U_N}{\partial U_N}\right|_{\mathrm{surface}}
+=-\frac{h_m}{R(t)w_N}.
+\]
+
+这里的表面导数只表示表面 Robin 通量产生的部分，同一最外节点的对角元素还包含内部最后一个界面通量的导数。中心零通量不产生额外边界项。于是移动边界模型的 Jacobian 仍为稀疏带状矩阵，右端与 Kirchhoff 导数使用同一套 Gauss--Legendre 求积。
+
+温度和含水率组成统一状态向量，采用带稀疏解析Jacobian的隐式BDF方法联立推进。
 
 问题4最终采用 \(N=300\) 个表面加密区间，相对容差和绝对容差分别为 \(2\times10^{-10}\) 和 \(2\times10^{-12}\)。前4 h最大内部步长为5 s，随后为300 s。达标时间由
 
@@ -799,18 +1270,16 @@ F^C_{N+1/2}=R(t)h_m[C_a(t)-U_N].
 
 的向下穿越事件确定，并使用未舍入结果进行判断。
 
-计算结果位于固定材料坐标 \(\xi_i\) 上，而题目要求输出固定实际距离 \(r_j\) 处的状态。时刻 \(t\) 的对应材料坐标为
+计算结果按60 s采样，并在达标判定后追加向上保留四位小数的报告时刻。结果位于固定材料坐标 \(\xi_i\) 上，而题目要求输出固定实际距离 \(r_j\) 处的状态。时刻 \(t\) 的对应材料坐标为
 
 \[
 \xi_j(t)=\frac{r_j}{R(t)}.
 \]
 
-当 \(r_j\le R(t)\) 时，在 \((\xi_i,U_i)\) 上采用保形分段三次插值得到
+当 \(r_j\le R(t)\) 时，先将固定实际位置换算为材料坐标 \(\xi_j(t)=r_j/R(t)\)，再对同一时刻各计算节点上的含水率数据 \(\{(\xi_i,U_i(t))\}\) 进行保形分段三次插值，从而得到实际位置 \(r_j\) 处的含水率
 
 \[
 C(r_j,t)=U\left(\frac{r_j}{R(t)},t\right).
 \]
 
 当 \(r_j>R(t)\) 时，该位置已经位于药材外部，结果留空，不填零也不向区域外推；移动表面列始终取 \(U(1,t)\)。
-
-网格由200区间加密至300区间后，达标时间变化0.302 s；进一步收紧时间容差后，达标时间变化0.013 s。解析Jacobian相对误差约为 \(3.02\times10^{-16}\)，固定半径退化检验与问题2方程右端的最大差约为 \(3.00\times10^{-15}\)，水分累计收支残差保持在 \(10^{-14}\) 量级。无外部驱动力时，均匀温度场和含水率场在收缩过程中保持不变，说明坐标运动没有被错误地计为热源或水分源。
