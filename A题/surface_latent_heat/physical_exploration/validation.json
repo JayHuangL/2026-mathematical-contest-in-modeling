@@ -1,0 +1,132 @@
+{
+  "model_checks": {
+    "fixed": {
+      "equilibrium_rhs_max": 1.21066296943115e-13,
+      "mass_rate_residual": 6.776263578034403e-21,
+      "enthalpy_rate_residual": 0.0,
+      "max_omitted_jacobian_entry": 0.0,
+      "condensation_j": -9.669389843801771e-05,
+      "condensation_latent_out": -232.06535625124252
+    },
+    "moving": {
+      "equilibrium_rhs_max": 8.32811188746437e-14,
+      "mass_rate_residual": 0.0,
+      "enthalpy_rate_residual": 1.4210854715202004e-14,
+      "max_omitted_jacobian_entry": 0.0,
+      "condensation_j": -9.669389843801771e-05,
+      "condensation_latent_out": -232.06535625124252
+    },
+    "local": {
+      "equilibrium_rhs_max": 6.727244464518287e-14,
+      "mass_rate_residual": 3.3881317890172014e-21,
+      "enthalpy_rate_residual": 0.0,
+      "max_omitted_jacobian_entry": 0.0,
+      "condensation_j": -9.669389843801771e-05,
+      "condensation_latent_out": -232.06535625124252
+    }
+  },
+  "grid_120_to_240": {
+    "fixed_M0": {
+      "event_difference_s": 8.348674653566945,
+      "min_Ts_difference_C": 0.0
+    },
+    "fixed_M1": {
+      "event_difference_s": 8.617836945919066,
+      "min_Ts_difference_C": 0.0005551688221405726
+    },
+    "fixed_M2": {
+      "event_difference_s": 0.726406823639536,
+      "min_Ts_difference_C": 2.1949424322542654e-05
+    },
+    "fixed_M3": {
+      "event_difference_s": 0.7303632405808003,
+      "min_Ts_difference_C": 2.1939383003655166e-05
+    },
+    "moving_M0": {
+      "event_difference_s": 0.9994084849296314,
+      "min_Ts_difference_C": 0.0
+    },
+    "moving_M1": {
+      "event_difference_s": 1.4646154210964824,
+      "min_Ts_difference_C": 0.0006350721714127872
+    },
+    "moving_M2": {
+      "event_difference_s": 0.4965823630698196,
+      "min_Ts_difference_C": 2.1722165179483e-05
+    },
+    "moving_M3": {
+      "event_difference_s": 0.45027289775134705,
+      "min_Ts_difference_C": 2.1770018900468813e-05
+    },
+    "local_M4": {
+      "event_difference_s": 0.975127039544077,
+      "min_Ts_difference_C": 2.1761940285358605e-05
+    },
+    "local_M4_pore_collapse": {
+      "event_difference_s": 0.787139790864444,
+      "min_Ts_difference_C": 2.1769905867330408e-05
+    },
+    "local_M4_radiation": {
+      "event_difference_s": 1.0433693810625755,
+      "min_Ts_difference_C": 2.144119428848512e-05
+    }
+  },
+  "tight_tolerance_event_difference_s": {
+    "fixed": 0.0014909789115336025,
+    "moving": 0.11758523754679118,
+    "local": 0.0019211315418488084
+  },
+  "independent_sample_quadrature": {
+    "fixed_M3": {
+      "mass_error_trapezoid_kg_kgdry": 5.493595063299495e-07,
+      "energy_error_trapezoid_J_kgdry": 1.7799542321881745,
+      "energy_error_trapezoid_relative": 1.452248558684448e-07
+    },
+    "moving_M3": {
+      "mass_error_trapezoid_kg_kgdry": 1.1924185900902273e-06,
+      "energy_error_trapezoid_J_kgdry": 1.5512321518326644,
+      "energy_error_trapezoid_relative": 1.2667643781410702e-07
+    },
+    "local_M4": {
+      "mass_error_trapezoid_kg_kgdry": 7.327119382338765e-07,
+      "energy_error_trapezoid_J_kgdry": 1.6543200110900216,
+      "energy_error_trapezoid_relative": 1.3505584234773995e-07
+    }
+  },
+  "conditional_energy_volume_bound": {
+    "conditions": [
+      "humidity is kg/kg dry air",
+      "P=101325 Pa",
+      "only surface convection h=25",
+      "no condensation; surface >= ambient dewpoint",
+      "T >= 0 C",
+      "fixed length; dry mass from Appendix 4 initial density",
+      "water density 1000; true dry solid density 1500 kg/m3"
+    ],
+    "R_observed_3h_cm": 1.552,
+    "max_convective_heat_3h_J_kgdry": 867669.561148459,
+    "initial_sensible_heat_J_kgdry": 337400.0,
+    "max_evaporated_water_3h_kg_kgdry": 0.5021123171451913,
+    "min_water_loss_required_zero_pores_kg_kgdry": 1.0562575711638873,
+    "water_loss_required_constant_pores_kg_kgdry": 1.4272614451743306,
+    "interpretation": "Conditional incompatibility of this assumption bundle; not proof that measurements are wrong."
+  },
+  "radius_observation_common_window": {
+    "local_M4": {
+      "rmse_0_48h_cm": 0.2666472753749381,
+      "radius_3h_cm": 1.9365716318202706
+    },
+    "local_M4_pore_collapse": {
+      "rmse_0_48h_cm": 0.2598746154547161,
+      "radius_3h_cm": 1.9273418320730065
+    },
+    "local_M4_effective": {
+      "rmse_0_48h_cm": 0.16268038960885295,
+      "radius_3h_cm": 1.8678784223954388
+    },
+    "local_M4_radiation": {
+      "rmse_0_48h_cm": 0.2260624305640602,
+      "radius_3h_cm": 1.9195854831786492
+    }
+  }
+}
