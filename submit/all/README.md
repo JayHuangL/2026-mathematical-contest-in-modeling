@@ -1,6 +1,6 @@
 # A题四问整合提交包
 
-`paper.md` 是四问合并后的论文初稿；`data/` 保存题目附件和结果模板，`code/` 保存统一求解、导出与核验程序，`results/` 保存当前已核验的数值结果，`figures/` 保存正文引用的图片（包括根目录下分开的圆柱体与 `dr` 示意图、控制体守恒示意图）。`run_all.py` 是提交包的唯一总入口，负责四问的执行顺序、边界拟合窗口、结果重建和统一核验；`code/q1`--`code/q4` 仅作为其内部的可追溯实现单元。
+`paper.md` 是四问合并后的论文初稿；`data/` 保存题目附件和结果模板，`code/` 保存统一求解、导出与核验程序，`results/` 保存当前已核验的数值结果，`figures/` 保存正文引用的图片。全部图片按 `paper.md` 首次出现顺序统一编号为图 01--图 14，包括根目录下的圆柱体与 `dr` 示意图、控制体守恒示意图。`run_all.py` 是提交包的唯一总入口，负责四问的执行顺序、边界拟合窗口、结果重建和统一核验；`code/q1`--`code/q4` 仅作为其内部的可追溯实现单元。
 
 ## 复现
 
@@ -11,7 +11,7 @@ conda env create -f environment.yml       # 已有 2026modeling 环境时跳过
 conda run --no-capture-output -n 2026modeling python run_all.py --quick
 ```
 
-`--quick` 用较小空间网格检查程序链路。提交结果对应的完整网格、时间收紧、事件和敏感性核验使用：
+`--quick` 会把提交包复制到临时目录，用较小空间网格检查程序链路，正式 `results/` 不会被覆盖。提交结果对应的完整网格、时间收紧、事件和敏感性核验使用：
 
 ```powershell
 conda run --no-capture-output -n 2026modeling python run_all.py

@@ -297,7 +297,7 @@ def write_sensitivity_report(sensitivity):
         '',
         '附件 1 的环境边界记录范围为 0–14400 s；第一问的候选方法比较和主拟合只使用前 0–1800 s。六类方法中，分段线性、PCHIP、Akima 和自然三次样条是插值方法，平滑样条是带曲率惩罚的正则化最小二乘，只有拉伸指数模型通过非线性最小二乘估计参数。',
         '按时间顺序每隔 5 个记录留出 1 个样本，阻塞验证指标见 [boundary_cv.csv](boundary_cv.csv)。',
-        '原始 0–14400 s 散点和最终 0–1800 s 拟合曲线分别见 [原始环境散点图](01_raw_environment_scatter.png) 与 [拉伸指数拟合图](02_selected_stretched_exp_fit.png)。',
+        '原始 0–14400 s 散点和最终 0–1800 s 拟合曲线分别见 [图1 原始环境散点图](图01_原始环境边界散点.png) 与 [图2 拉伸指数拟合图](图02_拉伸指数最终拟合.png)。',
         '',
         '## 2. 拟合参数与误差',
         '',
@@ -345,7 +345,7 @@ def write_sensitivity_report(sensitivity):
         '本表中的“linear_input”直接量化原分段线性输入与主拟合输入的差异；两个拟合窗情景量化拟合窗口选择的不确定性。',
         '对流和扩散率情景只作一因子扰动，不能等同于参数的统计置信区间。潜热、气固平衡换算和轴向传递仍未被识别，因此不应把本表当作完整的物理误差上界。',
         '六类候选边界的 blocked hold-out 指标见 [boundary_cv.csv](boundary_cv.csv)。其中只有初值固定的拉伸指数模型通过非线性最小二乘估计参数；分段线性、PCHIP、Akima 和自然三次样条是插值方法，平滑样条是带曲率惩罚的正则化最小二乘平滑。粗糙度按验证区间 721 个等间距曲线点的平均绝对二阶差分计算。温度序列中拉伸指数模型的 RMSE 最低；环境水分浓度序列中自然三次样条 RMSE 略低，但其粗糙度约为拉伸指数模型的 69.5 倍。综合误差、粗糙度和统一函数族的可解释性，主模型选择初值固定的拉伸指数模型。',
-        '正文中的原始边界散点和最终选定曲线分别见 [原始环境散点图](figures/01_raw_environment_scatter.png) 与 [拉伸指数拟合图](figures/02_selected_stretched_exp_fit.png)。',
+        '正文中的原始边界散点和最终选定曲线分别见 [图1 原始环境散点图](图01_原始环境边界散点.png) 与 [图2 拉伸指数拟合图](图02_拉伸指数最终拟合.png)。',
         '',
     ]
     (OUT / '边界拟合与敏感性分析.md').write_text('\n'.join(lines), encoding='utf-8')
@@ -380,7 +380,7 @@ def make_boundary_figures(raw_environment, boundary_info):
                xlim=(0.0, float(t_s[-1])))
         ax.grid(alpha=0.22)
         ax.legend(fontsize=8, loc='best')
-    fig.savefig(OUT / '01_raw_environment_scatter.png', dpi=220)
+    fig.savefig(OUT / '图01_原始环境边界散点.png', dpi=220)
     plt.close(fig)
 
     # Figure 2: selected fit only, using the same 0--1800 s observations
@@ -409,7 +409,7 @@ def make_boundary_figures(raw_environment, boundary_info):
                 bbox={'facecolor': 'white', 'alpha': 0.8, 'edgecolor': '0.7'})
         ax.grid(alpha=0.22)
         ax.legend(fontsize=8, loc='best')
-    fig.savefig(OUT / '02_selected_stretched_exp_fit.png', dpi=220)
+    fig.savefig(OUT / '图02_拉伸指数最终拟合.png', dpi=220)
     plt.close(fig)
 
 
@@ -461,7 +461,7 @@ def make_figures(result_t, result_c, env):
     temp_bar.set_label('温度 / °C')
     moisture_bar = fig.colorbar(moisture_mesh, ax=axes[1], pad=0.02)
     moisture_bar.set_label('水分浓度 / (kg/kg)')
-    fig.savefig(OUT / '第一问结果图.png', dpi=180)
+    fig.savefig(OUT / '图05_第一问温度水分场.png', dpi=180)
     plt.close(fig)
 
 
