@@ -22,7 +22,7 @@ FIGURES = PACKAGE / "figures"
 # Q1 is an early-time identification problem.  Q2--Q4 use the complete
 # Attachment-1 record to detect independent stability transitions and estimate
 # tail means, but fit each stretched-exponential branch only up to its own
-# transition point before adding a 600 s blend and constant tail.
+# transition point before adding an 1800 s blend and constant tail.
 Q1_FIT_ENDPOINT_S = 1800.0
 
 
@@ -38,7 +38,7 @@ def copy_main_figures() -> None:
                "02_selected_stretched_exp_fit.png"],
         "q2": ["第二问结果图.png", "边界独立分界图.png", "分段边界整体拟合图.png"],
         "q3": ["第三问结果图.png"],
-        "q4": ["第四问结果图.png"],
+        "q4": ["第四问结果图.png", "01_raw_radius_scatter.png", "03_radius_methods.png"],
     }
     for question, names in mapping.items():
         for name in names:
