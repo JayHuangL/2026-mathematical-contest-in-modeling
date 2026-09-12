@@ -145,32 +145,35 @@ def plot(result,out):
                          'axes.unicode_minus':False,'font.size':10})
     time_h=result['t']/3600.0
     r_cm=result['plot_r_cm']
-    temperature=result['plot_T'].T
     moisture=result['plot_C'].T
-    temperature_cmap=LinearSegmentedColormap.from_list(
-        'temperature_blue_red',['#08306b','#2171b5','#f7f7f7','#cb181d','#67000d'])
     moisture_cmap=LinearSegmentedColormap.from_list(
-        'moisture_gray_blue',['#f0f0f0','#bdbdbd','#9ecae1','#3182bd','#08519c'])
-    fig, axes = plt.subplots(1,2,figsize=(13,5.6),constrained_layout=True)
-    temp_mesh=axes[0].pcolormesh(
-        time_h,r_cm,temperature,shading='nearest',cmap=temperature_cmap,
-        vmin=float(np.min(temperature)),vmax=float(np.max(temperature)))
-    moisture_mesh=axes[1].pcolormesh(
+        'moisture_gray_blue',
+        [(0.00,'#f0f0f0'),(0.13,'#d9d9d9'),(0.20,'#bdbdbd'),
+         (0.24,'#9ecae1'),(0.50,'#3182bd'),(1.00,'#08519c')])
+    # Emphasize the low-concentration range while retaining a monotone
+    # gray-to-blue interpretation for the concentration field.
+    moisture_cmap.set_bad('#ffffff')
+    # A sublinear map places the median concentration near the visual midpoint,
+    # keeping gray and blue regions visually comparable.
+    # Start the displayed scale at 0.08 kg/kg; lower values are clipped to
+    # the light-gray endpoint so 0.08 is the bottom colorbar tick.  The
+    # milder sublinear exponent keeps 0.12 and 0.15 close to the bottom.
+    moisture_norm=PowerNorm(gamma=0.5,vmin=0.08,
+                            vmax=float(np.nanmax(moisture)),clip=True)
+    moisture_ticks=np.array([0.08,0.12,0.15,0.30,0.60,1.00,1.50,2.00,2.55])
+    fig, ax = plt.subplots(figsize=(9.4,5.6),constrained_layout=True)
+    moisture_mesh=ax.pcolormesh(
         time_h,r_cm,moisture,shading='nearest',cmap=moisture_cmap,
-        norm=PowerNorm(gamma=1.8,vmin=float(np.min(moisture)),vmax=float(np.max(moisture))))
-    axes[0].set(title='温度场',xlabel='时间 / h',ylabel='距中心距离 / cm',ylim=(0,2))
-    axes[1].set(title='水分浓度场',xlabel='时间 / h',ylabel='距中心距离 / cm',ylim=(0,2))
-    axes[0].axvline(result['finish_h'],color='black',ls=':',lw=1,label='报告结束时刻')
-    axes[1].axvline(result['finish_h'],color='black',ls=':',lw=1,label='报告结束时刻')
-    axes[1].contour(time_h,r_cm,moisture,levels=[.15],colors='black',linewidths=1)
-    for ax in axes:
-        ax.set_xlim(float(time_h[0]),float(time_h[-1]))
-        ax.set_yticks(np.arange(0,2.01,.5))
-    temp_bar=fig.colorbar(temp_mesh,ax=axes[0],pad=.02)
-    temp_bar.set_label('温度 / °C')
-    moisture_bar=fig.colorbar(moisture_mesh,ax=axes[1],pad=.02)
+        norm=moisture_norm)
+    ax.contour(time_h,r_cm,moisture,levels=[0.15],colors=['#4d4d4d'],
+               linestyles='--',linewidths=1.0,zorder=6)
+    ax.set(title='水分浓度场',xlabel='时间 / h',ylabel='距中心距离 / cm',ylim=(0,2))
+    ax.set_xlim(float(time_h[0]),float(time_h[-1]))
+    ax.set_yticks(np.arange(0,2.01,.5))
+    moisture_bar=fig.colorbar(moisture_mesh,ax=ax,pad=.02,ticks=moisture_ticks)
+    moisture_bar.ax.tick_params(labelsize=8,pad=2)
     moisture_bar.set_label('水分浓度 / (kg/kg)')
-    fig.savefig(out/'第三问结果图.png',dpi=180)
+    fig.savefig(out/'图11_第三问干燥结果.png',dpi=180)
     plt.close(fig)
 
 

@@ -2,11 +2,11 @@
 python 第四问/solve_q4.py --check-time --comparisons
 """
 from pathlib import Path
-import argparse, hashlib, importlib.util, json, sys, time
+import argparse, csv, hashlib, importlib.util, json, sys, time
 import numpy as np
 import openpyxl
 from scipy.integrate import solve_ivp
-from scipy.interpolate import PchipInterpolator, Akima1DInterpolator, CubicSpline
+from scipy.interpolate import PchipInterpolator, Akima1DInterpolator, CubicSpline, UnivariateSpline
 from scipy.sparse import diags,bmat,csr_matrix
 from threadpoolctl import threadpool_limits
 
@@ -30,6 +30,111 @@ def read_xlsx(path):
     a=np.array(rows[1:],dtype=float)
     assert np.isfinite(a).all() and a[0,0]==0 and np.all(np.diff(a[:,0])>0)
     return a
+
+def _radius_smoothing_factor(values):
+    second=np.diff(np.asarray(values,dtype=float),n=2)
+    center=np.median(second)
+    sigma=1.4826*np.median(np.abs(second-center))/np.sqrt(6.)
+    if not np.isfinite(sigma) or sigma<=0:
+        sigma=max(float(np.std(values))*1e-4,np.finfo(float).eps)
+    return float(len(values)*sigma**2)
+
+def _radius_curve(name,t,r):
+    if name=='linear':
+        return lambda q: np.interp(q,t,r), {'method':name}
+    if name=='pchip':
+        return PchipInterpolator(t,r,extrapolate=False), {'method':name}
+    if name=='akima':
+        return Akima1DInterpolator(t,r,extrapolate=False), {'method':name}
+    if name=='cubic_spline':
+        return CubicSpline(t,r,bc_type='natural',extrapolate=False), {'method':name}
+    if name=='smooth_spline':
+        s=_radius_smoothing_factor(r)
+        return UnivariateSpline(t,r,s=s,ext=2), {'method':name,'smoothing_factor':s}
+    raise ValueError('Unknown radius diagnostic method: '+str(name))
+
+def _radius_metrics(curve,t_train,r_train,t_test,r_test):
+    prediction=np.asarray(curve(t_test),dtype=float)
+    if not np.isfinite(prediction).all():
+        raise ValueError('Radius candidate returned a non-finite value.')
+    dense=np.linspace(float(t_test[0]),float(t_test[-1]),721)
+    values=np.asarray(curve(dense),dtype=float)
+    if not np.isfinite(values).all():
+        raise ValueError('Radius candidate returned a non-finite dense value.')
+    lo,hi=float(np.min(r_train)),float(np.max(r_train))
+    overshoot=np.maximum(lo-values,0.)+np.maximum(values-hi,0.)
+    return {
+        'cv_rmse_cm':float(np.sqrt(np.mean((prediction-r_test)**2))*100.),
+        'cv_mae_cm':float(np.mean(np.abs(prediction-r_test))*100.),
+        'cv_max_abs_cm':float(np.max(np.abs(prediction-r_test))*100.),
+        'overshoot_max_cm':float(np.max(overshoot)*100.),
+        'roughness':float(np.mean(np.abs(np.diff(values,n=2)/(dense[1]-dense[0])**2))),
+    }
+
+def radius_diagnostics(radius,out):
+    """Compare radius continuous representations and render diagnostic figures."""
+    import matplotlib
+    matplotlib.use('Agg')
+    import matplotlib.pyplot as plt
+    methods=['linear','pchip','akima','cubic_spline','smooth_spline']
+    labels={'linear':'分段线性','pchip':'PCHIP','akima':'Akima',
+            'cubic_spline':'自然三次样条','smooth_spline':'平滑样条'}
+    colors={'linear':'#1f77b4','pchip':'#d62728','akima':'#2ca02c',
+            'cubic_spline':'#9467bd','smooth_spline':'#ff7f0e'}
+    t,r=radius[:,0],radius[:,1]
+    hold=np.zeros(len(t),dtype=bool)
+    hold[1:-1:5]=True
+    rows=[]
+    for name in methods:
+        try:
+            curve,metadata=_radius_curve(name,t[~hold],r[~hold])
+            metrics=_radius_metrics(curve,t[~hold],r[~hold],t[hold],r[hold])
+            dense=np.linspace(t[0],t[-1],5000)
+            values=np.asarray(curve(dense),dtype=float)
+            row={'method':name,**metrics,
+                 'increasing_segments':int(np.sum(np.diff(values)>1e-9)),
+                 'min_radius_cm':float(np.min(values)*100.),
+                 'max_radius_cm':float(np.max(values)*100.),
+                 'fit_metadata':repr(metadata)}
+        except Exception as exc:
+            row={'method':name,'error':str(exc)}
+        rows.append(row)
+
+    fieldnames=['cv_mae_cm','cv_max_abs_cm','cv_rmse_cm','fit_metadata',
+                'increasing_segments','max_radius_cm','method','min_radius_cm',
+                'overshoot_max_cm','roughness']
+    with (out/'radius_method_comparison.csv').open('w',encoding='utf-8',newline='') as fh:
+        writer=csv.DictWriter(fh,fieldnames=fieldnames)
+        writer.writeheader()
+        for row in rows:
+            writer.writerow({key:row.get(key,'') for key in fieldnames})
+
+    plt.rcParams.update({'font.sans-serif':['Microsoft YaHei','SimHei','DejaVu Sans'],
+                         'axes.unicode_minus':False,'font.size':10})
+    fig,ax=plt.subplots(figsize=(9,4.8),constrained_layout=True)
+    ax.scatter(t/3600.,r*100.,s=12,color='#4d4d4d',alpha=.65,label='附件2原始观测')
+    ax.set(xlabel='时间 / h',ylabel='半径 / cm',title='附件2：药材半径原始观测')
+    ax.grid(alpha=.2)
+    ax.legend(fontsize=9)
+    fig.savefig(out/'图12_半径原始散点.png',dpi=180)
+    plt.close(fig)
+
+    grid=np.linspace(t[0],t[-1],1800)
+    fig,axes=plt.subplots(1,2,figsize=(13,4.8),constrained_layout=True)
+    for ax,xmax,title in [(axes[0],72.,'全观测区间'),(axes[1],24.,'前 24 h 放大')]:
+        ax.scatter(t/3600.,r*100.,s=8,color='#555555',alpha=.45,label='附件2观测')
+        for name in methods:
+            curve,_=_radius_curve(name,t,r)
+            lw=2.4 if name=='pchip' else 1.05
+            alpha=1.0 if name=='pchip' else .75
+            ax.plot(grid/3600.,np.asarray(curve(grid))*100.,color=colors[name],lw=lw,alpha=alpha,label=labels[name])
+        ax.set(xlabel='时间 / h',ylabel='半径 / cm',xlim=(0.,xmax),title=title)
+        ax.grid(alpha=.2)
+        ax.legend(fontsize=8)
+    fig.suptitle('半径数据与候选连续表示方法比较')
+    fig.savefig(out/'图13_半径插值方法比较.png',dpi=180)
+    plt.close(fig)
+    return rows
 
 def load_q2(root=None):
     spec=importlib.util.spec_from_file_location('q2_model',PACKAGE/'code'/'q2'/'solve_q2.py')
@@ -218,7 +323,7 @@ def simulate(env,radius,n,rtol=2e-10,atol=2e-12,max_step=300.,**options):
             'balance_error':balance,'table_indices':table_indices,
             'profile_x':fixed_profile_x,'profiles_C':np.array(table_profiles)}
 
-def graph(result,radius,out):
+def graph(result,out):
     import matplotlib
     matplotlib.use('Agg')
     import matplotlib.pyplot as plt
@@ -226,41 +331,41 @@ def graph(result,radius,out):
     plt.rcParams.update({'font.sans-serif':['Microsoft YaHei','SimHei','DejaVu Sans'],'axes.unicode_minus':False,'font.size':10})
     time_h=result['t']/3600.
     r_cm=result['plot_r_cm']
-    temperature=result['plot_T'].T
     moisture=result['plot_C'].T
-    temperature_cmap=LinearSegmentedColormap.from_list(
-        'temperature_blue_red',['#08306b','#2171b5','#f7f7f7','#cb181d','#67000d'])
     moisture_cmap=LinearSegmentedColormap.from_list(
-        'moisture_gray_blue',['#f0f0f0','#bdbdbd','#9ecae1','#3182bd','#08519c'])
-    temperature_cmap.set_bad('#ffffff')
+        'moisture_gray_blue',
+        [(0.00,'#f0f0f0'),(0.13,'#d9d9d9'),(0.20,'#bdbdbd'),
+         (0.24,'#9ecae1'),(0.50,'#3182bd'),(1.00,'#08519c')])
     moisture_cmap.set_bad('#ffffff')
-    fig,axes=plt.subplots(1,3,figsize=(17,5.4),constrained_layout=True)
-    temp_mesh=axes[0].pcolormesh(
-        time_h,r_cm,temperature,shading='nearest',cmap=temperature_cmap,
-        vmin=float(np.nanmin(temperature)),vmax=float(np.nanmax(temperature)))
-    moisture_mesh=axes[1].pcolormesh(
+    # Emphasize the low-concentration range while retaining a monotone
+    # gray-to-blue interpretation for the concentration field.
+    # A sublinear map places the median concentration near the visual midpoint,
+    # keeping gray and blue regions visually comparable.
+    # Start the displayed scale at 0.08 kg/kg; lower values are clipped to
+    # the light-gray endpoint so 0.08 is the bottom colorbar tick.  The
+    # milder sublinear exponent keeps 0.12 and 0.15 close to the bottom.
+    moisture_norm=PowerNorm(gamma=0.5,vmin=0.08,
+                            vmax=float(np.nanmax(moisture)),clip=True)
+    moisture_ticks=np.array([0.08,0.12,0.15,0.30,0.60,1.00,1.50,2.00,2.55])
+    fig,moisture_ax=plt.subplots(figsize=(9.4,5.4),constrained_layout=True)
+    moisture_mesh=moisture_ax.pcolormesh(
         time_h,r_cm,moisture,shading='nearest',cmap=moisture_cmap,
-        norm=PowerNorm(gamma=1.8,vmin=float(np.nanmin(moisture)),vmax=float(np.nanmax(moisture))))
-    for ax in axes[:2]:
-        ax.set(xlabel='时间 / h',ylabel='距中心距离 / cm',ylim=(0,R0*100.))
-        ax.set_xlim(float(time_h[0]),float(time_h[-1]))
-        ax.set_yticks(np.arange(0,R0*100.+.01,.5))
-        ax.fill_between(time_h,result['R']*100.,R0*100.,facecolor='none',
-                        edgecolor='black',linewidth=0.,hatch='///',zorder=5)
-        ax.plot(time_h,result['R']*100.,color='black',lw=1.5,zorder=7,label='当前药材表面')
-    axes[0].set_title('温度场')
-    axes[1].set_title('水分浓度场')
-    axes[1].contour(time_h,r_cm,moisture,levels=[.15],colors='black',linewidths=1)
-    temp_bar=fig.colorbar(temp_mesh,ax=axes[0],pad=.02)
-    temp_bar.set_label('温度 / °C')
-    moisture_bar=fig.colorbar(moisture_mesh,ax=axes[1],pad=.02)
+        norm=moisture_norm)
+    moisture_ax.contour(time_h,r_cm,moisture,levels=[0.15],colors=['#4d4d4d'],
+                        linestyles='--',linewidths=1.0,zorder=6)
+    moisture_ax.set(xlabel='时间 / h',ylabel='距中心距离 / cm',
+                    ylim=(0,R0*100.),title='水分浓度场')
+    moisture_ax.set_xlim(float(time_h[0]),float(time_h[-1]))
+    moisture_ax.set_yticks(np.arange(0,R0*100.+.01,.5))
+    moisture_ax.fill_between(time_h,result['R']*100.,R0*100.,facecolor='none',
+                             edgecolor='black',linewidth=0.,hatch='///',zorder=5)
+    moisture_ax.plot(time_h,result['R']*100.,color='black',lw=1.5,zorder=7,
+                     label='当前药材表面')
+    moisture_bar=fig.colorbar(moisture_mesh,ax=moisture_ax,pad=.02,
+                              ticks=moisture_ticks)
+    moisture_bar.ax.tick_params(labelsize=8,pad=2)
     moisture_bar.set_label('水分浓度 / (kg/kg)')
-    axes[2].plot(time_h,result['R']*100,label='PCHIP半径')
-    within=radius[:,0]<=result['finish_s']
-    axes[2].set(xlabel='时间 / h',ylabel='半径 / cm',title='药材收缩')
-    axes[2].scatter(radius[within,0]/3600,radius[within,1]*100,s=8,color='black',label='附件2')
-    axes[2].grid(alpha=.2);axes[2].legend(fontsize=8)
-    fig.savefig(out/'第四问结果图.png',dpi=180)
+    fig.savefig(out/'图14_第四问收缩水分场.png',dpi=180)
     plt.close(fig)
 
 def main():
@@ -282,6 +387,7 @@ def main():
     boundary=None if a.boundary_mode=='raw' else (boundary_t,boundary_c)
     radius=read_xlsx(PACKAGE/'data'/'附件2.xlsx');radius[:,1]/=100
     assert radius[0,1]==R0 and np.all(np.diff(radius[:,1])<=0)
+    radius_diagnostics(radius,a.out)
     q2=load_q2()
     checks=unit_checks(q2,env,radius)
     print('Model checks:',checks,flush=True)
@@ -350,7 +456,7 @@ def main():
         label=f'{t/3600:.4f}' if t==r['finish_s'] else f'{t/3600:g}'
         lines.append(f'| {label} | {R:.4f} |')
     (a.out/'结果表.md').write_text('\n'.join(lines)+'\n',encoding='utf-8')
-    graph(r,radius,a.out)
+    graph(r,a.out)
     print(json.dumps(summary,ensure_ascii=False,indent=2),flush=True)
 
 if __name__=='__main__':
