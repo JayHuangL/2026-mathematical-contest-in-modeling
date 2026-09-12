@@ -294,53 +294,76 @@ $$
 
 热风烘干过程中，烘房温度和环境水分浓度分别通过表面换热和传质边界影响药材内部状态：\(T_a(t)\) 是温度场的外部热驱动，\(C_a(t)\) 是水分场的外部传质驱动。附件1以 60 s 为间隔给出 \(0\)--\(14400\ \mathrm s\) 的离散记录，而第三、第四问还需要进行更长时间的计算，因此环境记录的连续化和长期延拓本身就是模型的一部分。本文对两个边界量分别识别稳定阶段，再将预热段和稳定干燥段连接为连续输入；完整记录只用于稳定分界点探索、尾段均值估计以及分界前拟合。
 
-**问题一：稳定分界点的识别。** 设 \(y\in\{T_a,C_a\}\)，观测值为 \(y_i=y(t_i)\)。先对 60 s 序列作 11 点、二阶 Savitzky--Golay 平滑，得到 \(\widetilde y(t)\)，以减小测量噪声对趋势判断的影响。从 \(t=1800\ \mathrm s\) 起，以 \(W=1800\ \mathrm s\) 为窗口计算波动幅度
+**问题一：稳定分界点的识别。** 本问的目标不是判断药材内部是否已经达到热湿平衡，而是从外部记录中确定“仍在变化的预热边界”何时可以转化为“近似稳定的干燥边界”。令 \(y\in\{T_a,C_a\}\)：其中 \(T_a(t)\) 为烘房空气温度，单位为 °C，进入温度场的换热边界；\(C_a(t)\) 为题设环境水分浓度的有效参考量，单位为 kg/kg，进入含水率场的传质边界。两者的稳定时间分别由各自的观测序列确定，不能预先假定共用一个分界点。
+
+附件 1 的采样时刻为 \(t_i=i\Delta t\)，其中 \(\Delta t=60\ \mathrm s\)，观测值记为 \(y_i=y(t_i)\)。为区分真实趋势与短时波动，先对原始序列作 11 点、二阶 Savitzky--Golay 平滑，记平滑结果为 \(\widetilde y_i\)。平滑序列只用于识别趋势和计算窗口统计量；尾段均值和最终边界拟合仍使用原始观测值，从而避免平滑操作改变边界的量纲和平台水平。
+
+从 \(t=1800\ \mathrm s\) 开始扫描候选窗口。取窗口长度 \(W=1800\ \mathrm s\)，对应 \(n_W=W/\Delta t+1=31\) 个观测点。若窗口起点为 \(s=t_k\)，记其观测下标集合为 \(I_k=\{k,k+1,\ldots,k+n_W-1\}\)，则用窗口极差描述短时波动：
 
 $$
-R_y(s)=\max_{s\le t\le s+W}\widetilde y(t)-\min_{s\le t\le s+W}\widetilde y(t),
+R_y(s)=\max_{i\in I_k}\widetilde y_i-\min_{i\in I_k}\widetilde y_i.
 $$
 
-并用窗口内线性拟合斜率 \(b_y(s)\) 描述边界量是否仍在系统性变化。为使波动估计不被预热阶段的真实趋势污染，以下噪声估计只使用末段样本 \(I_{\mathrm{tail}}=\{i:t_i\ge 0.75t_{\max}\}\)。对残差 \(e_i=y_i-\widetilde y_i\)，先定义其中心位置和中位数绝对偏差（MAD）为
+同时，用窗口内平滑序列的最小二乘直线斜率描述边界量的残余趋势。令 \(\bar t_k\) 和 \(\bar{\widetilde y}_k\) 分别为窗口内时间和平滑值的均值，则
+
+$$
+b_y(s)=
+\frac{\displaystyle\sum_{i\in I_k}(t_i-\bar t_k)(\widetilde y_i-\bar{\widetilde y}_k)}
+{\displaystyle\sum_{i\in I_k}(t_i-\bar t_k)^2}.
+$$
+
+其中，\(R_y(s)\) 控制局部波动幅度，\(|b_y(s)|\) 控制窗口内的平均变化速度；二者分别对应“变化是否足够小”和“趋势是否基本停止”两个判据。
+
+为使阈值随不同物理量的噪声尺度自动调整，取末段样本 \(I_{\mathrm{tail}}=\{i:t_i\ge0.75t_{\max}\}\)，对残差 \(e_i=y_i-\widetilde y_i\) 作稳健估计：
 
 $$
 m_e=\operatorname{median}_{i\in I_{\mathrm{tail}}}(e_i),
 \qquad
-\operatorname{MAD}(e)=
-\operatorname{median}_{i\in I_{\mathrm{tail}}}|e_i-m_e|.
-$$
-
-这里的 \(\operatorname{median}\) 是中位数，即将样本从小到大排序后取 50\% 分位点；因此内层中位数 \(m_e\) 用来确定残差的中心，外层中位数则给出残差偏离该中心的典型幅度。采用绝对偏差可以避免正、负残差相互抵消，采用中位数则可减弱偶然异常点的影响。
-
-下面说明 MAD 前的系数如何得到。将末段残差近似看作含有零均值正态噪声的观测，即 \(e_i\approx \mu_e+\epsilon_i\)，其中 \(\epsilon_i\sim N(0,\sigma_y^2)\)。令 \(Z=\epsilon_i/\sigma_y\sim N(0,1)\)，并记标准正态分布函数为 \(\Phi\)。设 \(q\) 为 \(|Z|\) 的中位数，则
-
-$$
-\Pr(|Z|\le q)
-=\Pr(-q\le Z\le q)
-=\Phi(q)-\Phi(-q)
-=2\Phi(q)-1
-=0.5
-\ \Longrightarrow
-q=\Phi^{-1}(0.75)=0.67448975.
-$$
-
-所以在正态噪声假设下，
-
-$$
-\operatorname{MAD}(e)\approx 0.67448975\,\sigma_y,
+\operatorname{MAD}_y=\operatorname{median}_{i\in I_{\mathrm{tail}}}|e_i-m_e|,
 \qquad
-\widehat{\sigma}_y
-=\frac{\operatorname{MAD}(e)}{\Phi^{-1}(0.75)}
-=\frac{\operatorname{MAD}(e)}{0.67448975}
-\approx 1.4826\,\operatorname{MAD}(e).
+\widehat\sigma_y=1.4826\,\operatorname{MAD}_y.
 $$
 
-因此，\(1.4826=1/\Phi^{-1}(0.75)\) 是把 MAD 校准为正态分布标准差的无量纲系数，而不是额外拟合得到的参数。最终由末段平滑残差计算 \(\widehat{\sigma}_y=1.4826\,\operatorname{MAD}(e)\)，再由相邻记录差的中位数估计记录分辨率 \(d_y\)，设置 \(\varepsilon_{R,y}=\max(2\widehat{\sigma}_y,4d_y)\) 和 \(\varepsilon_{b,y}=\varepsilon_{R,y}/W\)。当某窗口及其后按时间排列的连续两个窗口均满足
+这里的 1.4826 等于 \(1/\Phi^{-1}(0.75)\)，是在正态噪声假设下将 MAD 校准为标准差的无量纲系数；它不是额外拟合参数。再以全序列相邻记录差的中位数表示记录分辨率尺度
 
 $$
-R_y(s)\le\varepsilon_{R,y},\qquad |b_y(s)|\le\varepsilon_{b,y},
+d_y=\operatorname{median}_{i=1,\ldots,n}|y_i-y_{i-1}|,
 $$
 
-则将首个窗口起点定义为稳定分界点 \(t_{s,y}\)。因此，“稳定”同时要求波动幅度小、平均变化率低，并且要持续三个窗口，避免把一次偶然的平静误判为恒定干燥阶段。
+并设置极差阈值和斜率阈值
+
+$$
+\varepsilon_{R,y}=\max\left(2\widehat\sigma_y,4d_y\right),
+\qquad
+\varepsilon_{b,y}=\frac{\varepsilon_{R,y}}{W}.
+$$
+
+于是，候选窗口的稳定标志定义为
+
+$$
+\mathcal S_y(s)=
+\begin{cases}
+1,&R_y(s)\le\varepsilon_{R,y}\ \text{且}\ |b_y(s)|\le\varepsilon_{b,y},\\
+0,&\text{其他情况}.
+\end{cases}
+$$
+
+为避免把一次偶然的平静当作稳定阶段，要求稳定标志在时间上连续通过三个窗口。对离散扫描而言，稳定分界点取为
+
+$$
+t_{s,y}=\min\left\{t_k:t_k\ge1800\ \mathrm s,\;
+\mathcal S_y(t_k)=\mathcal S_y(t_{k+n_W})=\mathcal S_y(t_{k+2n_W})=1\right\}.
+$$
+
+由于窗口两端的观测点均计入，单个窗口包含 31 个点，程序中连续窗口起点相隔 \(n_W\Delta t=1860\ \mathrm s\)。确定 \(t_{s,y}\) 后，再用分界点之后的原始记录计算稳定尾段均值
+
+$$
+y_* = \frac{1}{n_*}\sum_{t_i\ge t_{s,y}}y_i,
+\qquad
+n_* = \#\{i:t_i\ge t_{s,y}\},
+$$
+
+作为后续分段边界的稳定水平。这样得到的分界点具有明确的物理含义：它是外部边界的趋势项和波动项同时低于相应尺度后，连续保持三个窗口的最早时刻，而不是由肉眼观察或人为指定的“平台起点”。上述 \(t_{s,y}\) 与 \(y_*\) 将分别作为下一步分段边界函数的转接点和稳定尾段值。
 
 识别结果如下。表中列出连续通过判定的三个窗口起点，用来说明稳定状态是连续出现的。
 
