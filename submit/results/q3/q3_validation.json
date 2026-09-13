@@ -4,7 +4,7 @@
   "grid_mapping": "r=R*(1-exp(-4*x))/(1-exp(-4)), x=i/N",
   "output_interpolation": "PCHIP",
   "input_sha256": "7ef32870abeef420b89560b2530ff60dfe4255917805151d89988d0311af9dd7",
-  "q2_code_sha256": "251b4cad849ea6a0434564b939c6135fa602253e070e57d7319a4316d9fcab81",
+  "q2_code_sha256": "29a09209a071007a2ecc198c44b38767b6c4a713210ebbe7051e28b744748bcc",
   "N": 300,
   "rtol": 2e-10,
   "atol": 2e-12,
@@ -126,14 +126,14 @@
       "event_s": 207644.07596820322,
       "finish_h": 57.679,
       "balance_error": 6.328271240363392e-15,
-      "elapsed_s": 5.7139389000003575
+      "elapsed_s": 5.58862580001005
     },
     {
       "N": 300,
       "event_s": 207644.13231543673,
       "finish_h": 57.679,
       "balance_error": 1.199040866595169e-14,
-      "elapsed_s": 6.489456600000267,
+      "elapsed_s": 6.359728399998858,
       "event_diff_s": 0.056347233505221084,
       "max_C_diff_60s": 1.4625861441519561e-05
     }
