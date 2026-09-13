@@ -1,0 +1,254 @@
+{
+  "model": "homogeneous radial shrinkage; Appendix 4; material coordinates; Kirchhoff moisture flux",
+  "moisture_face_flux": "8-point Gauss-Legendre Kirchhoff average in C at arithmetic face temperature",
+  "environment_sha256": "7ef32870abeef420b89560b2530ff60dfe4255917805151d89988d0311af9dd7",
+  "radius_sha256": "5563acbfa4b4afb10cc6c03e2207e5369bf39da27576672aff14cc5c32e704af",
+  "R_interpolation": "pchip; hold last after 72 h",
+  "tail_T": 49.88579738562092,
+  "tail_C": 0.04982109375,
+  "boundary_mode": "staged",
+  "boundary_metadata": {
+    "mode": "stretched_exp_plus_independent_constant_stages",
+    "fit_endpoint_policy": "before_each_transition",
+    "fit_endpoint_temperature_s": 5280.0,
+    "fit_endpoint_moisture_s": 6780.0,
+    "transition_s": 1800.0,
+    "phase_temperature": {
+      "phase_s": 5280.0,
+      "window_s": 1800.0,
+      "persist_windows": 3,
+      "range_tol": 0.7199999999999989,
+      "slope_tol": 0.00039999999999999937,
+      "plateau_mean": 49.88579738562092,
+      "plateau_std": 0.24418245334060337,
+      "smoothing_window_points": 11,
+      "sigma_residual": 0.18085300839160726,
+      "resolution_scale": 0.17999999999999972,
+      "windows": [
+        {
+          "start_s": 5280.0,
+          "range": 0.7019254079254083,
+          "slope": 0.0003492325707446722
+        },
+        {
+          "start_s": 7140.0,
+          "range": 0.2735431235431207,
+          "slope": 0.00011307176918064573
+        },
+        {
+          "start_s": 9000.0,
+          "range": 0.23356876456877274,
+          "slope": 5.5206892122214996e-05
+        }
+      ]
+    },
+    "phase_moisture": {
+      "phase_s": 6780.0,
+      "window_s": 1800.0,
+      "persist_windows": 3,
+      "range_tol": 0.0008599999999999997,
+      "slope_tol": 4.777777777777776e-07,
+      "plateau_mean": 0.04982109375,
+      "plateau_std": 0.0003401950213613585,
+      "smoothing_window_points": 11,
+      "sigma_residual": 0.00017006700699279898,
+      "resolution_scale": 0.0002149999999999999,
+      "windows": [
+        {
+          "start_s": 6780.0,
+          "range": 0.0008256177156177186,
+          "slope": 4.286188497882165e-07
+        },
+        {
+          "start_s": 8640.0,
+          "range": 0.00038191142191142113,
+          "slope": 1.4159460611072885e-07
+        },
+        {
+          "start_s": 10500.0,
+          "range": 0.00023636363636363872,
+          "slope": 3.428030303030979e-08
+        }
+      ]
+    },
+    "phase_gap_s": 1500.0,
+    "transition_temperature": {
+      "center_s": 5280.0,
+      "left_s": 5280.0,
+      "right_s": 7080.0,
+      "width_s": 1800.0
+    },
+    "transition_moisture": {
+      "center_s": 6780.0,
+      "left_s": 6780.0,
+      "right_s": 8580.0,
+      "width_s": 1800.0
+    },
+    "plateau_temperature": 49.88579738562092,
+    "plateau_moisture": 0.04982109375,
+    "fit_temperature": {
+      "method": "stretched_exp",
+      "endpoint_s": 5280.0,
+      "initial_value": 28.0,
+      "amplitude": 22.191887972621366,
+      "tau_s": 1912.6395873822344,
+      "exponent": 1.1352502522080914,
+      "rmse": 0.1327058496924961,
+      "max_abs": 0.28347099398069275
+    },
+    "fit_moisture": {
+      "method": "stretched_exp",
+      "endpoint_s": 6780.0,
+      "initial_value": 0.01963,
+      "amplitude": 0.030898673671139184,
+      "tau_s": 2770.487032431583,
+      "exponent": 1.24353266724771,
+      "rmse": 0.00018241672775162645,
+      "max_abs": 0.00043936966007962486
+    }
+  },
+  "N": 300,
+  "grid": "xi=(1-exp(-4*i/N))/(1-exp(-4))",
+  "rtol": 2e-10,
+  "atol": 2e-12,
+  "model_checks": {
+    "jacobian_relative_error": 3.0181294485137957e-16,
+    "fixed_radius_q2_rhs_max_difference": 2.9976021664879227e-15,
+    "uniform_no_exchange_derivative": 0.0
+  },
+  "grid_checks": [
+    {
+      "N": 200,
+      "event_s": 184565.44230943368,
+      "finish_h": 51.2682,
+      "balance_error": 7.993605777301127e-15,
+      "elapsed_s": 9.353004199998395
+    },
+    {
+      "N": 300,
+      "event_s": 184565.59118513844,
+      "finish_h": 51.2683,
+      "balance_error": 5.773159728050814e-15,
+      "elapsed_s": 9.44455239999661,
+      "event_diff_s": 0.1488757047627587,
+      "max_output_C_diff": 3.4647614132410354e-05
+    }
+  ],
+  "time_check": {
+    "event_diff_s": 0.013295209384523332,
+    "max_output_C_diff": 1.839326868591229e-08
+  },
+  "comparisons": [
+    {
+      "case": "appendix4_fixed_radius",
+      "N": 800,
+      "event_h": 130.3588200475634
+    },
+    {
+      "case": "appendix3_shrinking",
+      "N": 800,
+      "event_h": 25.311978924627816
+    },
+    {
+      "case": "linear_radius",
+      "N": 800,
+      "event_h": 51.27175815331851
+    },
+    {
+      "case": "tail_50C_0.05",
+      "N": 800,
+      "event_h": 51.088883089375244
+    }
+  ],
+  "event_s": 184565.59118513844,
+  "event_h": 51.26821977364957,
+  "finish_h": 51.2683,
+  "finish_s": 184565.88,
+  "final_max_C": 0.14999985230094487,
+  "final_R_cm": 1.2,
+  "final_mean_C": 0.11839573293997231,
+  "max_radial_increase": 8.881784197001252e-16,
+  "radius_extrapolation_used": false,
+  "table_t_s": [
+    21600.0,
+    43200.0,
+    64800.0,
+    86400.0,
+    108000.0,
+    129600.0,
+    151200.0,
+    172800.0,
+    184565.88
+  ],
+  "table_R_cm": [
+    1.374,
+    1.248,
+    1.214,
+    1.204,
+    1.201,
+    1.2,
+    1.2,
+    1.2,
+    1.2
+  ],
+  "table_C": [
+    [
+      1.7211749977897706,
+      1.5390325896903074,
+      1.022966976173668,
+      0.4196934388101018
+    ],
+    [
+      0.7397560074000651,
+      0.6563596908794131,
+      0.4091053191011335,
+      0.16683261499339117
+    ],
+    [
+      0.4100969892684501,
+      0.3697977553040538,
+      0.24031551996090747,
+      0.08911081565293533
+    ],
+    [
+      0.286007104465306,
+      0.2618316184114615,
+      0.17940292965956747,
+      0.06721781473868195
+    ],
+    [
+      0.2269693548392846,
+      0.2099519212092861,
+      0.14958412899815013,
+      0.059347986126864066
+    ],
+    [
+      0.1933202587444297,
+      0.1801024539238888,
+      0.131918977810071,
+      0.05580875034434878
+    ],
+    [
+      0.1716500727483771,
+      0.16074225472673104,
+      0.12019682882348799,
+      0.053943326295382094
+    ],
+    [
+      0.15649950600996518,
+      0.14712419644764466,
+      0.1117538153974789,
+      0.052846880234629454
+    ],
+    [
+      0.14999985230094487,
+      0.14125945865072106,
+      0.10806297578197185,
+      0.0524305002719268
+    ]
+  ],
+  "output_rows": 3077,
+  "outside_blank_count": 20178,
+  "q3_finish_h": 57.679,
+  "q3_event_h_N800": null
+}

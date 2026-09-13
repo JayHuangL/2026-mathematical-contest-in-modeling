@@ -1,0 +1,179 @@
+{
+  "q1": {
+    "rows": 1800,
+    "radial_columns": 21,
+    "payload": true
+  },
+  "q2": {
+    "rows": 10800,
+    "radial_columns": 21,
+    "payload": true
+  },
+  "q3": {
+    "rows": 3461,
+    "radial_columns": 21,
+    "payload": true
+  },
+  "q4": {
+    "rows": 3077,
+    "radial_columns": 21,
+    "payload": true
+  },
+  "q1_workbook": {
+    "sheets": [
+      "温度",
+      "水分浓度"
+    ],
+    "rows": [
+      1800,
+      1800
+    ]
+  },
+  "q2_workbook": {
+    "sheets": [
+      "温度",
+      "水分浓度"
+    ],
+    "rows": [
+      10800,
+      10800
+    ]
+  },
+  "q3_workbook": {
+    "sheets": [
+      "Sheet1"
+    ],
+    "rows": [
+      3461
+    ]
+  },
+  "q4_workbook": {
+    "sheets": [
+      "Sheet1"
+    ],
+    "rows": [
+      3077
+    ]
+  },
+  "q1_workbook_values": {
+    "values_match_payload": true,
+    "rows": 1800,
+    "columns": 21
+  },
+  "q2_workbook_values": {
+    "values_match_payload": true,
+    "rows": 10800,
+    "columns": 21
+  },
+  "q3_workbook_values": {
+    "values_match_payload": true,
+    "rows": 3461,
+    "columns": 21
+  },
+  "q4_workbook_values": {
+    "values_match_payload": true,
+    "rows": 3077,
+    "columns": 21
+  },
+  "input_sha256": {
+    "附件1.xlsx": "7ef32870abeef420b89560b2530ff60dfe4255917805151d89988d0311af9dd7",
+    "附件2.xlsx": "5563acbfa4b4afb10cc6c03e2207e5369bf39da27576672aff14cc5c32e704af"
+  },
+  "source_sha256": {
+    "run_all.py": "3258c4844eab162aa956449d4edd9335819e2923b75fd82ca0457ea6bbf47d7f",
+    "code/artifact_names.py": "b9eed0f71c59aac3eb84ed626a412ec9415e25988473ffc4e189e6fb58d130f7",
+    "code/build_workbooks.py": "6fe1904d74730d85bdc75ee6dd55793924781f04962735276fc59f19eaae8e36",
+    "code/kirchhoff_flux.py": "61657fa3544dd5157560120df6bbdb798e71d5e004f942ada3f47e57ab9cadb1",
+    "code/q1/export_result1.py": "6d729118b529a9c793ef796f2a79842829b18672cb6c3db93f9da4273db2ed4d",
+    "code/q1/solve_q1.py": "b3de894b1e5e89943c775e1088730ce255dec3d9da7b749f3011404c0913bb0e",
+    "code/q2/boundary_stage.py": "8960120bb4ca82f86e02b14e530576d5b450d87490551fb21f3d3067f64a4914",
+    "code/q2/export_result2.py": "b33ec9775789ec2adb9701f212260209dcb8193941974517d8b59ca5957b2653",
+    "code/q2/run_sensitivity.py": "d604289289c0bdbb4e186bd453c25cfc679ad298ee3377692766c0c6230d8cd1",
+    "code/q2/solve_q2.py": "251b4cad849ea6a0434564b939c6135fa602253e070e57d7319a4316d9fcab81",
+    "code/q2/verify_result2.py": "b81e9094a2bcf74bf3a64ddb17912d1b91d5a5ee9da2659253a6614bcb6871d6",
+    "code/q3/boundary_stage.py": "d2f83a52f56ae69eeabe2b32a450580566274e0b9917e6f8db24bae9c4aa51b3",
+    "code/q3/solve_q3.py": "2caf0812c7de255c27d8cf15c2ab5b9f3ec6c91f625af2725472f7cdef879f3b",
+    "code/q3/verify_result3.py": "dd003d44192c9ccdce0f9de1880a8b016fa3c3fc216cbbb57d1146f34fb67af0",
+    "code/q4/boundary_stage.py": "d2f83a52f56ae69eeabe2b32a450580566274e0b9917e6f8db24bae9c4aa51b3",
+    "code/q4/build_workbook.py": "a134a1ddf220be934857891c6f3c679d850af99bad007927bb493e44a14c9fc7",
+    "code/q4/solve_q4.py": "7f36e433bf01c974d198c8b5b69bafa9c211c416ed906775f981b2992460bd7c",
+    "code/q4/verify_result4.py": "933d8036631cdafab5576281c04dd2bd612ab0a3681715d4b6dcc039a0b76a58",
+    "code/verify_all.py": "b348ec43cdba828f1c5351044d14547e01efd8ece5761df8bb1bcfd2a39dcff5"
+  },
+  "result_directory_layout": {
+    "image_files": 0,
+    "markdown_files": 0
+  },
+  "generated_output_sha256": {
+    "results/q1/result1.xlsx": "b7726d906b027b6dac2773fbb666574b43ba416d2d1c0271904d8312c2c8ed2a",
+    "results/q1/q1_result_data.json": "830080d0edfcf2f359ce44cc78209fce758c886bde56b3a8f4da8fd518efa1a1",
+    "results/q1/q1_result_full_precision.npz": "db957f422c1e48e856717c3fa549ef24d906cfb5a44570674482048985d2b3a7",
+    "results/q1/q1_validation.json": "c6c2a4591b6ab059d27ef633c88c9f19feaec1b7d1804993f58bb5b3471d092d",
+    "results/q2/result2.xlsx": "36a1cb61e06f6895052cfb18f744c18bc765a1e83e7d9124e042d6dbcdbafc44",
+    "results/q2/q2_result_data.json": "3fa7fc979279e72e05d35ecacfef06041f14dcbf92036986a7e9a8fdbaf6445e",
+    "results/q2/q2_result_full_precision.npz": "233c5f864aca040de2cde9503edebd0e228165c5518a581676ff5e3570648117",
+    "results/q2/q2_validation.json": "e3928c601ad76b1e5ff6dcf9f53e46c0d3f9a71922fbc8487117666d39cb4f0d",
+    "results/q3/result3.xlsx": "699faedba112e6ee7519e9b8fdcf854fb5b92c9313faa81174502d0896c11fde",
+    "results/q3/q3_result_data.json": "919dd198fd8f0c736239206c259824f6f79e1e919c479f4dbd3ea4c7b876ae12",
+    "results/q3/q3_result_full_precision.npz": "fe3d20d6c74b86e5f6bfad0f51487c893f38452af9577af19b272a5ab6e21788",
+    "results/q3/q3_validation.json": "00263c08f55ca170bf91bf26b3a19a93039ed337baa389fb009d2bc00c8921cc",
+    "results/q4/result4.xlsx": "eb057ed2891c863f07a4afa00c339503b5ed7bbb506f7d94671e31bbe18a3c11",
+    "results/q4/q4_result_data.json": "4bfcdde41c9d62510c21f21a2103f28a546af8e55c64de377abbdc1db24033d8",
+    "results/q4/q4_result_full_precision.npz": "b35789d61f85822e97a410898a1cee30fc21b170c81b3f409d0fbc1956944bcd",
+    "results/q4/q4_validation.json": "fe6bf1d0036140d6945aab41fecffa464e374bc6129a4a58f5daa79f62e9a561",
+    "results/q2/q2_parameter_sensitivity.json": "5f5c56417d67abef8dbfedd78eb20d294b4126a481bdfa0f8a547e73ea445566",
+    "results/q2/q2_validation_export.json": "1247e6c157a794b0e6306cfc520d3d7385893cd1015761ef6893469376775f08",
+    "results/q3/q3_validation_export.json": "c48e2e3ed659bda44315e093723e5b67fb6d54bc62e644c73b215e953ee6ba89",
+    "results/q4/q4_validation_export.json": "1410e9955e8624f5fdd409ff8911932649394da1d79b76b729c02117e0f28755",
+    "results/q4/q4_radius_method_comparison.csv": "97b31c15a89e44193121d2a631bef1b53ad718d922e9b150d20f3dc101b92339",
+    "figures/q1/q1_fig_01_boundary_raw_scatter.png": "a927c45d88218c0a1478930b7202fe67649773a077665ba050b4a27a87f36ae5",
+    "figures/q1/q1_fig_02_boundary_stretched_exp_fit.png": "700d604ddfcb4b28c5a63a7b4c11620e2933a0a51526ec319c9a689ebf4ef9c7",
+    "figures/q1/q1_fig_03_temperature_moisture_field.png": "279eea5c400ae7d9aeb813758c8a913c00738b41d74281c3f35a553b628e2352",
+    "figures/q2/q2_fig_01_boundary_stability_detection.png": "1bb343e1f8caa52b2d65d7e49a6d764ccb7a73e7cfdd5a1a6507dd9e13de1643",
+    "figures/q2/q2_fig_02_staged_boundary_fit.png": "7651f69b04824353d13c8bfb5288a1984a2fdc7c58c5b93103f2dd6097470491",
+    "figures/q2/q2_fig_03_parameter_sensitivity.png": "c87813fe41e94b65a51675f58de350af453858694fc805325b2b2f87ce47c2fd",
+    "figures/q2/q2_fig_04_temperature_moisture_field.png": "d03dcd3ae6e221d0ce247fc36a07987efc7cda6a51b804d107929f3c6bdca0ee",
+    "figures/q3/q3_fig_01_drying_result.png": "cddd8c279651f345aabcbb2df2a4e730a2fbcb9e1b748fb3b2355b3f4f42eeac",
+    "figures/q4/q4_fig_01_radius_raw_scatter.png": "e2c6a5689e55140b871ee889ab97851d66898d72de3a4a72630a20a43927703c",
+    "figures/q4/q4_fig_02_radius_pchip_fit.png": "764d8862e2f0ac39a54e1f54e30ef2aa2f7fdcb6bbe5eacd203456be43ba45bd",
+    "figures/q4/q4_fig_03_shrinkage_moisture_field.png": "1163d3e21936bb55057e9df468c8e6a6c1d86d8781feae6e652ae7a0a61229b6"
+  },
+  "synchronized_paper_figures_sha256": {
+    "figures/q1/q1_fig_01_boundary_raw_scatter.png": "a927c45d88218c0a1478930b7202fe67649773a077665ba050b4a27a87f36ae5",
+    "figures/q1/q1_fig_02_boundary_stretched_exp_fit.png": "700d604ddfcb4b28c5a63a7b4c11620e2933a0a51526ec319c9a689ebf4ef9c7",
+    "figures/q1/q1_fig_03_temperature_moisture_field.png": "279eea5c400ae7d9aeb813758c8a913c00738b41d74281c3f35a553b628e2352",
+    "figures/q2/q2_fig_01_boundary_stability_detection.png": "1bb343e1f8caa52b2d65d7e49a6d764ccb7a73e7cfdd5a1a6507dd9e13de1643",
+    "figures/q2/q2_fig_02_staged_boundary_fit.png": "7651f69b04824353d13c8bfb5288a1984a2fdc7c58c5b93103f2dd6097470491",
+    "figures/q2/q2_fig_03_parameter_sensitivity.png": "c87813fe41e94b65a51675f58de350af453858694fc805325b2b2f87ce47c2fd",
+    "figures/q2/q2_fig_04_temperature_moisture_field.png": "d03dcd3ae6e221d0ce247fc36a07987efc7cda6a51b804d107929f3c6bdca0ee",
+    "figures/q3/q3_fig_01_drying_result.png": "cddd8c279651f345aabcbb2df2a4e730a2fbcb9e1b748fb3b2355b3f4f42eeac",
+    "figures/q4/q4_fig_01_radius_raw_scatter.png": "e2c6a5689e55140b871ee889ab97851d66898d72de3a4a72630a20a43927703c",
+    "figures/q4/q4_fig_02_radius_pchip_fit.png": "764d8862e2f0ac39a54e1f54e30ef2aa2f7fdcb6bbe5eacd203456be43ba45bd",
+    "figures/q4/q4_fig_03_shrinkage_moisture_field.png": "1163d3e21936bb55057e9df468c8e6a6c1d86d8781feae6e652ae7a0a61229b6"
+  },
+  "paper_image_references": {
+    "count": 0,
+    "all_exist": true,
+    "paths": []
+  },
+  "upstream_preprocessing_diagnostics": {
+    "boundary_cv_rows": 12,
+    "endpoint_comparison_rows": 84,
+    "schema_complete": true,
+    "input_dependency": "附件1.xlsx (unchanged hash recorded above)"
+  },
+  "static_assets_sha256": {
+    "results/q1/q1_boundary_model_cv.csv": "6c632c95530d14f02ba61edcc25be459b7b33f8ff3e022e8946328981a72f389",
+    "results/q1/q1_boundary_endpoint_comparison.csv": "7fad249e73954ffb34d939e51c0ffbf4d16ba339f0590286d84b1cf4f650fb83"
+  },
+  "manual_geometry_assets": {
+    "all_exist": false,
+    "present": [],
+    "missing": [
+      "figures/图03_圆柱体与dr示意图.pdf",
+      "figures/图03_圆柱体与dr示意图.png",
+      "figures/图04_有限体积离散示意图.pdf",
+      "figures/图04_有限体积离散示意图.png"
+    ]
+  }
+}
