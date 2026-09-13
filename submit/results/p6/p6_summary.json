@@ -1,13 +1,20 @@
 {
   "section": "6 误差与敏感性分析",
+  "error_categories": [
+    "数值收敛性误差",
+    "参数敏感性误差",
+    "系统误差：长期边界扰动"
+  ],
   "model_version": "current submit q1-q4 formal results",
   "source_hashes": {
-    "code/p6/run_p6.py": "36de88819bcdcd08ec0552339e72222e8e0b67b3061902c1235952c2f53446ab",
+    "code/p6/run_p6.py": "9b14d22da87628d832e92d7efa1304794f55b250d226ceb6738b71e814198e4d",
     "code/q1/solve_q1.py": "f00700a92f7241142edcbc8230bc50eeea077e170fd1038e03fa4b9e1e2144d6",
     "code/q2/solve_q2.py": "29a09209a071007a2ecc198c44b38767b6c4a713210ebbe7051e28b744748bcc",
     "code/q2/run_sensitivity.py": "76c77e80c85ea13f22d43bdfa15c772f91bbb64e2cd8d4d1e57b51eb98031300",
     "code/q2/boundary_stage.py": "8960120bb4ca82f86e02b14e530576d5b450d87490551fb21f3d3067f64a4914",
+    "code/q3/boundary_stage.py": "d2f83a52f56ae69eeabe2b32a450580566274e0b9917e6f8db24bae9c4aa51b3",
     "code/q3/solve_q3.py": "5b0ba30053928d7a128741c67c9839363120cf5811247f49ca849a815566f0f8",
+    "code/q4/boundary_stage.py": "d2f83a52f56ae69eeabe2b32a450580566274e0b9917e6f8db24bae9c4aa51b3",
     "code/q4/solve_q4.py": "b8ff988e7277030a1c7b9c5f23a813d1b9f5bbad50d30fc4c659b433fa381944",
     "code/kirchhoff_flux.py": "61657fa3544dd5157560120df6bbdb798e71d5e004f942ada3f47e57ab9cadb1"
   },
@@ -28,7 +35,7 @@
     "q3_event_h": 57.67892564317687,
     "q4_event_h": 51.26821977364957
   },
-  "convergence": [
+  "numerical_convergence": [
     {
       "question": "问题1",
       "check": "空间加密",
@@ -183,77 +190,7 @@
       "interpretation": "时间积分误差很小"
     }
   ],
-  "water_balance": [
-    {
-      "question": "问题1",
-      "max_absolute_water_balance_residual": 4.7878367936959876e-15,
-      "unit": "kg/kg",
-      "scope": "formal grid records"
-    },
-    {
-      "question": "问题2",
-      "max_absolute_water_balance_residual": 4.884981308350689e-15,
-      "unit": "kg/kg",
-      "scope": "formal grid records"
-    },
-    {
-      "question": "问题3",
-      "max_absolute_water_balance_residual": 1.199040866595169e-14,
-      "unit": "kg/kg",
-      "scope": "formal grid records"
-    },
-    {
-      "question": "问题4",
-      "max_absolute_water_balance_residual": 7.993605777301127e-15,
-      "unit": "kg/kg",
-      "scope": "formal grid records"
-    }
-  ],
-  "jacobian_and_limit_checks": {
-    "q2_jacobian_relative_error": 4.0235530350447686e-16,
-    "q4_jacobian_relative_error": 3.0181294485137957e-16,
-    "q4_fixed_radius_q2_rhs_max_difference": 2.9976021664879227e-15,
-    "q4_uniform_no_exchange_derivative": 0.0
-  },
-  "physical_checks": [
-    {
-      "question": "问题1",
-      "min_temperature_C": 28.0,
-      "max_temperature_C": 36.7805917358465,
-      "min_moisture_kg_per_kg": 1.5102365278424779,
-      "max_moisture_kg_per_kg": 2.55,
-      "max_radial_increase_kg_per_kg": 0.0,
-      "center_is_wettest": true
-    },
-    {
-      "question": "问题2",
-      "min_temperature_C": 28.0,
-      "max_temperature_C": 49.82491080821335,
-      "min_moisture_kg_per_kg": 1.0074684024264957,
-      "max_moisture_kg_per_kg": 2.5500000000000003,
-      "max_radial_increase_kg_per_kg": 0.0,
-      "center_is_wettest": true
-    },
-    {
-      "question": "问题3",
-      "min_temperature_C": 28.0,
-      "max_temperature_C": 49.88579738562095,
-      "min_moisture_kg_per_kg": 0.05246946839720739,
-      "max_moisture_kg_per_kg": 2.55,
-      "max_radial_increase_kg_per_kg": 8.881784197001252e-16,
-      "center_is_wettest": true
-    },
-    {
-      "question": "问题4",
-      "min_temperature_C": 28.0,
-      "max_temperature_C": 49.88579738562093,
-      "min_moisture_kg_per_kg": 0.0524305002719268,
-      "max_moisture_kg_per_kg": 2.55,
-      "max_radial_increase_kg_per_kg": 8.881784197001252e-16,
-      "center_is_wettest": true
-    }
-  ],
-  "sensitivity": {
+  "parameter_sensitivity": {
     "q1_reference": {
       "description": "0–1800 s nonlinear boundary fit",
       "grid_intervals": 800,
@@ -731,66 +668,52 @@
       }
     }
   },
-  "scenario_sensitivity": [
-    {
-      "question": "问题3",
-      "scenario": "50C_0.05",
-      "description": "尾段固定为50 °C、0.05 kg/kg",
-      "event_h": 57.47344438092994,
-      "delta_h": -0.2054812622469271,
-      "reference_event_h": 57.67892564317687
-    },
-    {
-      "question": "问题3",
-      "scenario": "last_hour_mean",
-      "description": "尾段采用附件最后1 h均值",
-      "event_h": 57.47514154742414,
-      "delta_h": -0.20378409575273082,
-      "reference_event_h": 57.67892564317687
-    },
-    {
-      "question": "问题4",
-      "scenario": "appendix4_fixed_radius",
-      "description": "附录4物性、固定半径",
-      "event_h": 130.3588200475634,
-      "delta_h": 79.09060027391382,
-      "reference_event_h": 51.26821977364957
-    },
-    {
-      "question": "问题4",
-      "scenario": "appendix3_shrinking",
-      "description": "附录3物性、保持收缩半径",
-      "event_h": 25.311978924627816,
-      "delta_h": -25.956240849021754,
-      "reference_event_h": 51.26821977364957
-    },
-    {
-      "question": "问题4",
-      "scenario": "linear_radius",
-      "description": "附录4物性、分段线性半径",
-      "event_h": 51.27175815331851,
-      "delta_h": 0.0035383796689387736,
-      "reference_event_h": 51.26821977364957
-    },
-    {
-      "question": "问题4",
-      "scenario": "tail_50C_0.05",
-      "description": "附录4物性、尾段固定为50 °C、0.05 kg/kg",
-      "event_h": 51.088883089375244,
-      "delta_h": -0.17933668427432536,
-      "reference_event_h": 51.26821977364957
-    }
-  ],
+  "systematic_boundary": {
+    "method": "均值平台+稳定尾段残差成块重采样",
+    "seed": 20260913,
+    "sample_count": 4,
+    "N": 200,
+    "max_step_s": 300.0,
+    "block_points": 10,
+    "block_length_s": 600.0,
+    "environment_end_s": 14400.0,
+    "stable_start_s": 8580.0,
+    "stable_sample_count": 98,
+    "plateau_temperature_C": 49.88579738562092,
+    "plateau_moisture_kg_per_kg": 0.04982109375,
+    "residual_std_T_C": 0.15445080793694593,
+    "residual_std_C_kg_per_kg": 0.00016684356976690682,
+    "boundary_formula": "future boundary = detected plateau mean + centered stable-tail residual blocks",
+    "summary": [
+      {
+        "question": "问题3",
+        "baseline_event_h": 57.67892564317687,
+        "fluctuation_mean_event_h": 57.67639323528305,
+        "fluctuation_std_h": 0.0014692432100712808,
+        "fluctuation_min_event_h": 57.67453438983224,
+        "fluctuation_max_event_h": 57.67796264071645,
+        "mean_delta_h": -0.0025324078938151473,
+        "min_delta_h": -0.004391253344628865,
+        "max_delta_h": -0.0009630024604163623,
+        "sample_count": 4
+      },
+      {
+        "question": "问题4",
+        "baseline_event_h": 51.26821977364957,
+        "fluctuation_mean_event_h": 51.266990838801746,
+        "fluctuation_std_h": 0.0008147302494700506,
+        "fluctuation_min_event_h": 51.266058097266445,
+        "fluctuation_max_event_h": 51.2680147423825,
+        "mean_delta_h": -0.0012289348478198292,
+        "min_delta_h": -0.0021616763831247,
+        "max_delta_h": -0.00020503126707183128,
+        "sample_count": 4
+      }
+    ]
+  },
   "generated_files": {
     "convergence_csv": "results/p6/p6_convergence.csv",
-    "balance_csv": "results/p6/p6_balance.csv",
-    "physical_checks_csv": "results/p6/p6_physical_checks.csv",
     "sensitivity_csv": "results/p6/p6_sensitivity.csv",
-    "scenarios_csv": "results/p6/p6_scenarios.csv",
-    "figures": [
-      "figures/p6/p6_fig_01_numerical_convergence.png",
-      "figures/p6/p6_fig_02_parameter_sensitivity.png",
-      "figures/p6/p6_fig_03_scenario_sensitivity.png"
-    ]
+    "systematic_boundary_csv": "results/p6/p6_systematic_boundary.csv"
   }
 }

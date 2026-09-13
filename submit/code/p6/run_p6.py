@@ -1,32 +1,34 @@
-"""Build the error and sensitivity-analysis package for Section 6.
+"""Build the three error-analysis tables for Section 6.
 
-The script consumes the current, hash-checked q1--q4 validation records.  It
-does not rerun the four forward solvers; ``submit/run_all.py`` remains the
-single entry point for regenerating those numerical results.
+The script consumes the current formal Q1--Q4 records.  It writes only
+structured tables: numerical convergence, parameter sensitivity, and
+long-term-boundary systematic-error scenarios.
 
-Run from ``submit`` or from any directory:
+Run from the submit directory:
 
     conda run --no-capture-output -n 2026modeling python code/p6/run_p6.py
 """
 from __future__ import annotations
 
+import contextlib
 import csv
+import gc
 import hashlib
+import importlib.util
+import io
 import json
+import sys
 from pathlib import Path
 
-import matplotlib
-
-matplotlib.use("Agg")
-import matplotlib.pyplot as plt
 import numpy as np
 
 
+sys.dont_write_bytecode = True
 HERE = Path(__file__).resolve().parent
 PACKAGE = HERE.parents[1]
+CODE = PACKAGE / "code"
 RESULTS = PACKAGE / "results"
 OUT = RESULTS / "p6"
-FIGURES = PACKAGE / "figures" / "p6"
 
 Q1_VALIDATION = RESULTS / "q1" / "q1_validation.json"
 Q2_VALIDATION = RESULTS / "q2" / "q2_validation.json"
@@ -34,18 +36,12 @@ Q2_SENSITIVITY = RESULTS / "q2" / "q2_parameter_sensitivity.json"
 Q3_VALIDATION = RESULTS / "q3" / "q3_validation.json"
 Q4_VALIDATION = RESULTS / "q4" / "q4_validation.json"
 
-PARAMETER_LABELS = {
-    "h": r"$h$",
-    "hm": r"$h_m$",
-    "D": r"$D$",
-    "capacity": r"$\rho c_p$",
-    "conductivity": r"$k$",
-    "diffusivity": r"$D$",
-}
-Q2_PARAMETERS = ("h", "hm", "capacity", "conductivity", "diffusivity")
-Q1_PARAMETERS = ("h", "hm", "D")
-BLUE = "#4c78a8"
-RED = "#e45756"
+BOUNDARY_SAMPLE_COUNT = 4
+BOUNDARY_SEED = 20260913
+BOUNDARY_GRID = 200
+BOUNDARY_MAX_STEP_S = 300.0
+BOUNDARY_BLOCK_POINTS = 10
+SOLVER_HORIZON_S = 864000.0
 
 
 def sha256(path: Path) -> str:
@@ -67,11 +63,18 @@ def write_csv(path: Path, rows: list[dict], fieldnames: list[str]) -> None:
         writer.writerows(rows)
 
 
+def load_module(name: str, path: Path):
+    spec = importlib.util.spec_from_file_location(name, path)
+    if spec is None or spec.loader is None:
+        raise ImportError(f"cannot load module: {path}")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
 def validate_source_links(q2_sensitivity: dict, q3: dict) -> None:
-    """Reject old diagnostics whose recorded solver hashes no longer match."""
     for relative, expected in q2_sensitivity["source_sha256"].items():
-        actual = sha256(PACKAGE / relative)
-        if actual != expected:
+        if sha256(PACKAGE / relative) != expected:
             raise RuntimeError(f"stale Q2 sensitivity source hash: {relative}")
     q2_relative = "code/q2/solve_q2.py"
     if sha256(PACKAGE / q2_relative) != q3["q2_code_sha256"]:
@@ -137,60 +140,13 @@ def convergence_rows(q1: dict, q2: dict, q3: dict, q4: dict) -> list[dict]:
     return rows
 
 
-def balance_rows(q1: dict, q2: dict, q3: dict, q4: dict) -> list[dict]:
-    values = {
-        "问题1": max(float(row["balance_C"]) for row in q1["convergence"]),
-        "问题2": max(float(row["moisture_balance_error"]) for row in q2["convergence"]),
-        "问题3": max(float(row["balance_error"]) for row in q3["grid_checks"]),
-        "问题4": max(float(row["balance_error"]) for row in q4["grid_checks"]),
-    }
-    return [
-        {
-            "question": question,
-            "max_absolute_water_balance_residual": residual,
-            "unit": "kg/kg",
-            "scope": "formal grid records",
-        }
-        for question, residual in values.items()
-    ]
-
-
-def physical_rows(q3: dict, q4: dict) -> list[dict]:
-    rows = []
-    validation_radial_increase = {
-        "q3": float(q3["max_radial_increase"]),
-        "q4": float(q4["max_radial_increase"]),
-    }
-    for question in ("q1", "q2", "q3", "q4"):
-        path = RESULTS / question / f"{question}_result_full_precision.npz"
-        with np.load(path, mmap_mode="r") as data:
-            temperature = np.asarray(data["T"])
-            moisture = np.asarray(data["C"])
-            radial_increase = (
-                validation_radial_increase[question]
-                if question in validation_radial_increase
-                else float(np.nanmax(np.diff(moisture, axis=1)))
-            )
-            rows.append({
-                "question": f"问题{question[1:]}",
-                "min_temperature_C": float(np.nanmin(temperature)),
-                "max_temperature_C": float(np.nanmax(temperature)),
-                "min_moisture_kg_per_kg": float(np.nanmin(moisture)),
-                "max_moisture_kg_per_kg": float(np.nanmax(moisture)),
-                "max_radial_increase_kg_per_kg": radial_increase,
-                "center_is_wettest": bool(np.all(np.nanargmax(moisture, axis=1) == 0)),
-            })
-    return rows
-
-
 def q1_sensitivity_rows(q1: dict) -> list[dict]:
-    sensitivity = q1["sensitivity"]
-    rows = []
     metric_info = {
         "T_mean_1800_C": ("平均温度", "°C"),
         "C_mean_1800_kg_per_kg": ("平均含水率", "kg/kg"),
     }
-    for scenario in sensitivity["scenarios"]:
+    rows = []
+    for scenario in q1["sensitivity"]["scenarios"]:
         name = scenario["name"]
         if name.startswith("h_factor_"):
             parameter, factor = "h", float(name.rsplit("_", 1)[-1])
@@ -220,11 +176,11 @@ def q1_sensitivity_rows(q1: dict) -> list[dict]:
 
 
 def q2_sensitivity_rows(q2_sensitivity: dict) -> list[dict]:
-    rows = []
     metric_info = {
         "mean_T_3h": ("3 h平均温度", "°C"),
         "mean_C_3h": ("3 h平均含水率", "kg/kg"),
     }
+    rows = []
     for record in q2_sensitivity["records"]:
         if record["case"] == "baseline":
             continue
@@ -246,209 +202,187 @@ def q2_sensitivity_rows(q2_sensitivity: dict) -> list[dict]:
     return rows
 
 
-def scenario_rows(q3: dict, q4: dict) -> list[dict]:
+def make_boundary_ensemble(raw_env: np.ndarray, build_boundaries, q2_model,
+                           sample_count: int, seed: int) -> tuple[list[dict], dict]:
+    """Propagate centered stable-tail residual blocks through Q3 and Q4."""
+    q3_model = load_module("p6_q3_model", CODE / "q3" / "solve_q3.py")
+    q4_model = load_module("p6_q4_model", CODE / "q4" / "solve_q4.py")
+
+    base_t, base_c, staged_env, boundary_info = build_boundaries(
+        raw_env, mode="staged"
+    )
+    stable_start = max(
+        float(boundary_info["transition_temperature"]["right_s"]),
+        float(boundary_info["transition_moisture"]["right_s"]),
+    )
+    stable_mask = raw_env[:, 0] >= stable_start
+    residual_pool = raw_env[stable_mask, 1:] - staged_env[stable_mask, 1:]
+    residual_pool = residual_pool - residual_pool.mean(axis=0)
+    if len(residual_pool) < BOUNDARY_BLOCK_POINTS:
+        raise RuntimeError("stable tail is too short for block resampling")
+    dt_s = float(np.median(np.diff(raw_env[:, 0])))
+    if not np.allclose(np.diff(raw_env[:, 0]), dt_s):
+        raise RuntimeError("environment sampling is not uniform")
+
+    plateau = np.array([
+        float(boundary_info["plateau_temperature"]),
+        float(boundary_info["plateau_moisture"]),
+    ])
+    end_s = float(raw_env[-1, 0])
+    horizon_s = SOLVER_HORIZON_S - end_s
+    if horizon_s <= 0:
+        raise RuntimeError("solver horizon must exceed environment data")
+
+    radius = q4_model.read_xlsx(PACKAGE / "data" / "附件2.xlsx")
+    radius[:, 1] /= 100.0
+    q3_reference = float(read_json(Q3_VALIDATION)["event_h"])
+    q4_reference = float(read_json(Q4_VALIDATION)["event_h"])
+
+    def make_realization(rng: np.random.Generator) -> tuple[np.ndarray, np.ndarray]:
+        block_length_s = BOUNDARY_BLOCK_POINTS * dt_s
+        count = int(np.ceil(horizon_s / block_length_s))
+        values = []
+        while len(values) < count:
+            start = int(rng.integers(0, len(residual_pool)))
+            block = (start + np.arange(BOUNDARY_BLOCK_POINTS)) % len(residual_pool)
+            values.append(residual_pool[block].mean(axis=0))
+        values = np.asarray(values[:count], dtype=float)
+        relative_times = np.arange(count + 1, dtype=float) * block_length_s
+        residuals = np.vstack([np.zeros((1, 2)), values])
+        return relative_times, residuals
+
+    def make_boundary(relative_times: np.ndarray, residuals: np.ndarray):
+        def temperature(t):
+            q = float(t)
+            if q <= end_s:
+                return float(base_t(q))
+            return float(plateau[0] + np.interp(
+                q - end_s, relative_times, residuals[:, 0]
+            ))
+
+        def moisture(t):
+            q = float(t)
+            if q <= end_s:
+                return float(base_c(q))
+            return float(plateau[1] + np.interp(
+                q - end_s, relative_times, residuals[:, 1]
+            ))
+
+        return temperature, moisture
+
     rows = []
-    q3_reference = float(q3["event_h"])
-    q4_reference = float(q4["event_h"])
-    q3_descriptions = {
-        "50C_0.05": "尾段固定为50 °C、0.05 kg/kg",
-        "last_hour_mean": "尾段采用附件最后1 h均值",
+    common = {
+        "method": "均值平台+稳定尾段残差成块重采样",
+        "N": BOUNDARY_GRID,
+        "block_points": BOUNDARY_BLOCK_POINTS,
+        "block_length_s": BOUNDARY_BLOCK_POINTS * dt_s,
+        "stable_start_s": stable_start,
     }
-    q4_descriptions = {
-        "appendix4_fixed_radius": "附录4物性、固定半径",
-        "appendix3_shrinking": "附录3物性、保持收缩半径",
-        "linear_radius": "附录4物性、分段线性半径",
-        "tail_50C_0.05": "附录4物性、尾段固定为50 °C、0.05 kg/kg",
+    for question, event_h in (("问题3", q3_reference), ("问题4", q4_reference)):
+        rows.append({
+            **common,
+            "question": question,
+            "sample": "mean_baseline",
+            "seed": "",
+            "residual_std_T_C": float(np.std(residual_pool[:, 0], ddof=1)),
+            "residual_std_C_kg_per_kg": float(np.std(residual_pool[:, 1], ddof=1)),
+            "event_h": event_h,
+            "delta_h": 0.0,
+            "baseline_event_h": event_h,
+        })
+
+    for sample in range(1, sample_count + 1):
+        sample_seed = seed + sample
+        relative_times, residuals = make_realization(
+            np.random.default_rng(sample_seed)
+        )
+        boundary = make_boundary(relative_times, residuals)
+        with contextlib.redirect_stdout(io.StringIO()):
+            q3_result = q3_model._integrate(
+                q2_model,
+                staged_env,
+                BOUNDARY_GRID,
+                max_step=BOUNDARY_MAX_STEP_S,
+                boundary=boundary,
+            )
+            q4_result = q4_model.simulate(
+                staged_env,
+                radius,
+                BOUNDARY_GRID,
+                max_step=BOUNDARY_MAX_STEP_S,
+                boundary=boundary,
+                radius_method="pchip",
+            )
+        events = {
+            "问题3": float(q3_result["event_s"]) / 3600.0,
+            "问题4": float(q4_result["event_s"]) / 3600.0,
+        }
+        del q3_result, q4_result
+        gc.collect()
+        print(f"systematic boundary sample {sample}/{sample_count} finished", flush=True)
+        for question, event_h in events.items():
+            baseline = q3_reference if question == "问题3" else q4_reference
+            rows.append({
+                **common,
+                "question": question,
+                "sample": f"bootstrap_{sample:02d}",
+                "seed": sample_seed,
+                "residual_std_T_C": float(np.std(residual_pool[:, 0], ddof=1)),
+                "residual_std_C_kg_per_kg": float(np.std(residual_pool[:, 1], ddof=1)),
+                "event_h": event_h,
+                "delta_h": event_h - baseline,
+                "baseline_event_h": baseline,
+            })
+
+    metadata = {
+        "method": common["method"],
+        "seed": seed,
+        "sample_count": sample_count,
+        "N": BOUNDARY_GRID,
+        "max_step_s": BOUNDARY_MAX_STEP_S,
+        "block_points": BOUNDARY_BLOCK_POINTS,
+        "block_length_s": BOUNDARY_BLOCK_POINTS * dt_s,
+        "environment_end_s": end_s,
+        "stable_start_s": stable_start,
+        "stable_sample_count": int(len(residual_pool)),
+        "plateau_temperature_C": float(plateau[0]),
+        "plateau_moisture_kg_per_kg": float(plateau[1]),
+        "residual_std_T_C": float(np.std(residual_pool[:, 0], ddof=1)),
+        "residual_std_C_kg_per_kg": float(np.std(residual_pool[:, 1], ddof=1)),
+        "boundary_formula": "future boundary = detected plateau mean + centered stable-tail residual blocks",
     }
-    for record in q3["tail_sensitivity"]:
-        event_h = float(record["event_h"])
-        rows.append({
-            "question": "问题3",
-            "scenario": record["case"],
-            "description": q3_descriptions.get(record["case"], record["case"]),
-            "event_h": event_h,
-            "delta_h": event_h - q3_reference,
-            "reference_event_h": q3_reference,
-        })
-    for record in q4["comparisons"]:
-        event_h = float(record["event_h"])
-        rows.append({
-            "question": "问题4",
-            "scenario": record["case"],
-            "description": q4_descriptions.get(record["case"], record["case"]),
-            "event_h": event_h,
-            "delta_h": event_h - q4_reference,
-            "reference_event_h": q4_reference,
-        })
-    return rows
+    return rows, metadata
 
 
-def configure_plot() -> None:
-    plt.rcParams.update({
-        "font.sans-serif": ["Microsoft YaHei", "SimHei", "DejaVu Sans"],
-        "axes.unicode_minus": False,
-        "font.size": 10,
-    })
-
-
-def signed_colors(values) -> list[str]:
-    return [BLUE if value >= 0 else RED for value in values]
-
-
-def make_convergence_figure(rows: list[dict]) -> str:
-    space_c = []
-    time_c = []
-    event_space = []
-    event_time = []
-    labels = ["问题1", "问题2", "问题3", "问题4"]
-    for question in labels:
-        space = [r["value"] for r in rows if r["question"] == question
-                 and r["check"] == "空间加密" and r["unit"] == "kg/kg"]
-        time = [r["value"] for r in rows if r["question"] == question
-                and r["check"] == "时间收紧" and r["unit"] == "kg/kg"]
-        space_c.append(max(space))
-        time_c.append(max(time))
+def systematic_summary(rows: list[dict]) -> list[dict]:
+    summaries = []
     for question in ("问题3", "问题4"):
-        event_space.append(next(r["value"] for r in rows if r["question"] == question
-                                and r["check"] == "空间加密" and r["unit"] == "s"))
-        event_time.append(next(r["value"] for r in rows if r["question"] == question
-                               and r["check"] == "时间收紧" and r["unit"] == "s"))
-
-    fig, axes = plt.subplots(1, 2, figsize=(11, 4.5), constrained_layout=True)
-    x = np.arange(len(labels))
-    width = 0.36
-    axes[0].bar(x - width / 2, space_c, width, color=BLUE, label="空间加密")
-    axes[0].bar(x + width / 2, time_c, width, color=RED, label="时间收紧")
-    axes[0].set_yscale("log")
-    axes[0].set_xticks(x, labels)
-    axes[0].set_title("含水率数值差异的数量级")
-    axes[0].set_xlabel("问题")
-    axes[0].set_ylabel("最大差异 / (kg/kg)")
-    axes[0].grid(axis="y", alpha=0.22)
-    axes[0].legend(frameon=False)
-
-    x_event = np.arange(2)
-    axes[1].bar(x_event - width / 2, event_space, width, color=BLUE, label="空间加密")
-    axes[1].bar(x_event + width / 2, event_time, width, color=RED, label="时间收紧")
-    axes[1].set_yscale("log")
-    axes[1].set_xticks(x_event, ["问题3", "问题4"])
-    axes[1].set_title("干燥终点事件时间差")
-    axes[1].set_xlabel("问题")
-    axes[1].set_ylabel("事件时间差 / s")
-    axes[1].grid(axis="y", alpha=0.22)
-    axes[1].legend(frameon=False)
-
-    path = FIGURES / "p6_fig_01_numerical_convergence.png"
-    fig.savefig(path, dpi=180)
-    plt.close(fig)
-    return path.relative_to(PACKAGE).as_posix()
-
-
-def make_parameter_figure(q1: dict, q2_sensitivity: dict) -> str:
-    q1_scenarios = {row["name"]: row for row in q1["sensitivity"]["scenarios"]}
-    q1_t = []
-    q1_c = []
-    for parameter in Q1_PARAMETERS:
-        low = q1_scenarios[f"{parameter}_factor_0.8"]
-        high = q1_scenarios[f"{parameter}_factor_1.2"]
-        q1_t.append([low["delta_from_reference"]["T_mean_1800_C"],
-                     high["delta_from_reference"]["T_mean_1800_C"]])
-        q1_c.append([low["delta_from_reference"]["C_mean_1800_kg_per_kg"],
-                     high["delta_from_reference"]["C_mean_1800_kg_per_kg"]])
-
-    central = q2_sensitivity["central_dimensionless_sensitivity"]
-    q2_t = [central[p]["mean_T_3h"] for p in Q2_PARAMETERS]
-    q2_c = [central[p]["mean_C_3h"] for p in Q2_PARAMETERS]
-    labels_q1 = [PARAMETER_LABELS[p] for p in Q1_PARAMETERS]
-    labels_q2 = [PARAMETER_LABELS[p] for p in Q2_PARAMETERS]
-
-    fig, axes = plt.subplots(2, 2, figsize=(11, 7.2), constrained_layout=True)
-    x1 = np.arange(len(Q1_PARAMETERS))
-    width = 0.34
-    low_t = [pair[0] for pair in q1_t]
-    high_t = [pair[1] for pair in q1_t]
-    low_c = [pair[0] for pair in q1_c]
-    high_c = [pair[1] for pair in q1_c]
-    axes[0, 0].bar(x1 - width / 2, low_t, width, color=BLUE, label="×0.8")
-    axes[0, 0].bar(x1 + width / 2, high_t, width, color=RED, label="×1.2")
-    axes[0, 0].set_xticks(x1, labels_q1)
-    axes[0, 0].set_title("问题1：1800 s平均温度变化")
-    axes[0, 0].set_ylabel("变化 / °C")
-    axes[0, 0].legend(frameon=False)
-
-    axes[0, 1].bar(x1 - width / 2, low_c, width, color=BLUE, label="×0.8")
-    axes[0, 1].bar(x1 + width / 2, high_c, width, color=RED, label="×1.2")
-    axes[0, 1].set_xticks(x1, labels_q1)
-    axes[0, 1].set_title("问题1：1800 s平均含水率变化")
-    axes[0, 1].set_ylabel("变化 / (kg/kg)")
-    axes[0, 1].legend(frameon=False)
-
-    x2 = np.arange(len(Q2_PARAMETERS))
-    axes[1, 0].bar(x2, q2_t, color=signed_colors(q2_t))
-    axes[1, 0].set_xticks(x2, labels_q2)
-    axes[1, 0].set_title("问题2：3 h平均温度无量纲敏感度")
-    axes[1, 0].set_ylabel("中心差分灵敏度")
-
-    axes[1, 1].bar(x2, q2_c, color=signed_colors(q2_c))
-    axes[1, 1].set_xticks(x2, labels_q2)
-    axes[1, 1].set_title("问题2：3 h平均含水率无量纲敏感度")
-    axes[1, 1].set_ylabel("中心差分灵敏度")
-
-    for ax in axes.flat:
-        ax.axhline(0.0, color="black", lw=0.8)
-        ax.grid(axis="y", alpha=0.22)
-
-    path = FIGURES / "p6_fig_02_parameter_sensitivity.png"
-    fig.savefig(path, dpi=180)
-    plt.close(fig)
-    return path.relative_to(PACKAGE).as_posix()
-
-
-def make_scenario_figure(scenarios: list[dict]) -> str:
-    by_question = {"问题3": [], "问题4": []}
-    for row in scenarios:
-        by_question[row["question"]].append(row)
-    q3 = by_question["问题3"]
-    q4 = by_question["问题4"]
-    q4_structural_names = {"appendix4_fixed_radius", "appendix3_shrinking"}
-    q4_local = [row for row in q4 if row["scenario"] not in q4_structural_names]
-    q4_structural = [row for row in q4 if row["scenario"] in q4_structural_names]
-
-    fig, axes = plt.subplots(1, 3, figsize=(13.5, 4.5), constrained_layout=True)
-    figure_labels = {
-        "50C_0.05": "固定尾段",
-        "last_hour_mean": "末1 h均值",
-        "appendix4_fixed_radius": "附录4固定半径",
-        "appendix3_shrinking": "附录3收缩",
-        "linear_radius": "分段线性半径",
-        "tail_50C_0.05": "固定尾段",
-    }
-    panels = [
-        (axes[0], q3, "问题3：长期边界情景"),
-        (axes[1], q4_structural, "问题4：结构情景"),
-        (axes[2], q4_local, "问题4：局部输入情景"),
-    ]
-    for ax, rows, title in panels:
-        values = [row["delta_h"] for row in rows]
-        labels = [figure_labels.get(row["scenario"], row["scenario"]) for row in rows]
-        y = np.arange(len(rows))
-        ax.barh(y, values, color=signed_colors(values))
-        ax.axvline(0.0, color="black", lw=0.8)
-        ax.set_yticks(y, labels)
-        ax.invert_yaxis()
-        ax.set_title(title)
-        ax.set_xlabel("达标时间相对变化 / h")
-        ax.grid(axis="x", alpha=0.22)
-
-    path = FIGURES / "p6_fig_03_scenario_sensitivity.png"
-    fig.savefig(path, dpi=180)
-    plt.close(fig)
-    return path.relative_to(PACKAGE).as_posix()
+        selected = [
+            float(row["event_h"]) for row in rows
+            if row["question"] == question and row["sample"] != "mean_baseline"
+        ]
+        baseline = next(
+            float(row["baseline_event_h"]) for row in rows
+            if row["question"] == question and row["sample"] == "mean_baseline"
+        )
+        deltas = np.asarray(selected) - baseline
+        summaries.append({
+            "question": question,
+            "baseline_event_h": baseline,
+            "fluctuation_mean_event_h": float(np.mean(selected)),
+            "fluctuation_std_h": float(np.std(selected, ddof=1)),
+            "fluctuation_min_event_h": float(np.min(selected)),
+            "fluctuation_max_event_h": float(np.max(selected)),
+            "mean_delta_h": float(np.mean(deltas)),
+            "min_delta_h": float(np.min(deltas)),
+            "max_delta_h": float(np.max(deltas)),
+            "sample_count": len(selected),
+        })
+    return summaries
 
 
 def main() -> None:
     OUT.mkdir(parents=True, exist_ok=True)
-    FIGURES.mkdir(parents=True, exist_ok=True)
     q1 = read_json(Q1_VALIDATION)
     q2 = read_json(Q2_VALIDATION)
     q2_sensitivity = read_json(Q2_SENSITIVITY)
@@ -456,28 +390,27 @@ def main() -> None:
     q4 = read_json(Q4_VALIDATION)
     validate_source_links(q2_sensitivity, q3)
 
+    q2_model_for_data = load_module("p6_q2_data_model", CODE / "q2" / "solve_q2.py")
+    raw_env = q2_model_for_data.read_environment()
+    boundary_module = load_module(
+        "p6_boundary_stage", CODE / "q3" / "boundary_stage.py"
+    )
+
     convergence = convergence_rows(q1, q2, q3, q4)
-    balances = balance_rows(q1, q2, q3, q4)
-    physical = physical_rows(q3, q4)
     sensitivity = q1_sensitivity_rows(q1) + q2_sensitivity_rows(q2_sensitivity)
-    scenarios = scenario_rows(q3, q4)
+    systematic, systematic_metadata = make_boundary_ensemble(
+        raw_env,
+        boundary_module.build_boundaries,
+        q2_model_for_data,
+        BOUNDARY_SAMPLE_COUNT,
+        BOUNDARY_SEED,
+    )
+    systematic_stats = systematic_summary(systematic)
 
     write_csv(
         OUT / "p6_convergence.csv",
         convergence,
         ["question", "check", "metric", "value", "unit", "comparison", "interpretation"],
-    )
-    write_csv(
-        OUT / "p6_balance.csv",
-        balances,
-        ["question", "max_absolute_water_balance_residual", "unit", "scope"],
-    )
-    write_csv(
-        OUT / "p6_physical_checks.csv",
-        physical,
-        ["question", "min_temperature_C", "max_temperature_C",
-         "min_moisture_kg_per_kg", "max_moisture_kg_per_kg",
-         "max_radial_increase_kg_per_kg", "center_is_wettest"],
     )
     write_csv(
         OUT / "p6_sensitivity.csv",
@@ -486,27 +419,24 @@ def main() -> None:
          "delta", "unit", "dimensionless_sensitivity"],
     )
     write_csv(
-        OUT / "p6_scenarios.csv",
-        scenarios,
-        ["question", "scenario", "description", "event_h", "delta_h", "reference_event_h"],
+        OUT / "p6_systematic_boundary.csv",
+        systematic,
+        ["method", "question", "sample", "seed", "N", "block_points",
+         "block_length_s", "stable_start_s", "residual_std_T_C",
+         "residual_std_C_kg_per_kg", "event_h", "delta_h", "baseline_event_h"],
     )
-
-    configure_plot()
-    figure_paths = [
-        make_convergence_figure(convergence),
-        make_parameter_figure(q1, q2_sensitivity),
-        make_scenario_figure(scenarios),
-    ]
 
     source_paths = [
         HERE / "run_p6.py",
-        PACKAGE / "code" / "q1" / "solve_q1.py",
-        PACKAGE / "code" / "q2" / "solve_q2.py",
-        PACKAGE / "code" / "q2" / "run_sensitivity.py",
-        PACKAGE / "code" / "q2" / "boundary_stage.py",
-        PACKAGE / "code" / "q3" / "solve_q3.py",
-        PACKAGE / "code" / "q4" / "solve_q4.py",
-        PACKAGE / "code" / "kirchhoff_flux.py",
+        CODE / "q1" / "solve_q1.py",
+        CODE / "q2" / "solve_q2.py",
+        CODE / "q2" / "run_sensitivity.py",
+        CODE / "q2" / "boundary_stage.py",
+        CODE / "q3" / "boundary_stage.py",
+        CODE / "q3" / "solve_q3.py",
+        CODE / "q4" / "boundary_stage.py",
+        CODE / "q4" / "solve_q4.py",
+        CODE / "kirchhoff_flux.py",
     ]
     input_paths = [
         PACKAGE / "data" / "附件1.xlsx",
@@ -519,6 +449,11 @@ def main() -> None:
     ]
     summary = {
         "section": "6 误差与敏感性分析",
+        "error_categories": [
+            "数值收敛性误差",
+            "参数敏感性误差",
+            "系统误差：长期边界扰动",
+        ],
         "model_version": "current submit q1-q4 formal results",
         "source_hashes": {
             path.relative_to(PACKAGE).as_posix(): sha256(path) for path in source_paths
@@ -534,34 +469,22 @@ def main() -> None:
             "q3_event_h": float(q3["event_h"]),
             "q4_event_h": float(q4["event_h"]),
         },
-        "convergence": convergence,
-        "water_balance": balances,
-        "jacobian_and_limit_checks": {
-            "q2_jacobian_relative_error": float(q2["jacobian_relative_error"]),
-            "q4_jacobian_relative_error": float(q4["model_checks"]["jacobian_relative_error"]),
-            "q4_fixed_radius_q2_rhs_max_difference": float(
-                q4["model_checks"]["fixed_radius_q2_rhs_max_difference"]
-            ),
-            "q4_uniform_no_exchange_derivative": float(
-                q4["model_checks"]["uniform_no_exchange_derivative"]
-            ),
-        },
-        "physical_checks": physical,
-        "sensitivity": {
+        "numerical_convergence": convergence,
+        "parameter_sensitivity": {
             "q1_reference": q1["sensitivity"]["reference"],
             "q1_scenarios": q1["sensitivity"]["scenarios"],
             "q2_reference": q2_sensitivity["records"][0],
             "q2_scenarios": q2_sensitivity["records"][1:],
             "q2_central_dimensionless": q2_sensitivity["central_dimensionless_sensitivity"],
         },
-        "scenario_sensitivity": scenarios,
+        "systematic_boundary": {
+            **systematic_metadata,
+            "summary": systematic_stats,
+        },
         "generated_files": {
             "convergence_csv": "results/p6/p6_convergence.csv",
-            "balance_csv": "results/p6/p6_balance.csv",
-            "physical_checks_csv": "results/p6/p6_physical_checks.csv",
             "sensitivity_csv": "results/p6/p6_sensitivity.csv",
-            "scenarios_csv": "results/p6/p6_scenarios.csv",
-            "figures": figure_paths,
+            "systematic_boundary_csv": "results/p6/p6_systematic_boundary.csv",
         },
     }
     write_json(OUT / "p6_summary.json", summary)
@@ -569,8 +492,8 @@ def main() -> None:
         "summary": "results/p6/p6_summary.json",
         "convergence_rows": len(convergence),
         "sensitivity_rows": len(sensitivity),
-        "scenario_rows": len(scenarios),
-        "figures": figure_paths,
+        "systematic_boundary_rows": len(systematic),
+        "systematic_summary": systematic_stats,
     }, ensure_ascii=False, indent=2), flush=True)
 
 
