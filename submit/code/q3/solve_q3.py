@@ -185,7 +185,7 @@ def plot(result,out):
 def main():
     parser=argparse.ArgumentParser()
     parser.add_argument('--root',type=Path,default=PACKAGE/'data',
-                        help='Kept for command compatibility; the unified package uses submit/all/data.')
+                        help='Kept for command compatibility; the unified package uses its local data directory.')
     parser.add_argument('--out',type=Path,default=OUT)
     parser.add_argument('--grids',type=int,nargs='+',default=[400,800,1600,3200])
     parser.add_argument('--check-time',action='store_true')

@@ -13,14 +13,14 @@ HERE = Path(__file__).resolve().parent
 PACKAGE = HERE.parent.parent
 if str(HERE.parent) not in sys.path:
     sys.path.insert(0, str(HERE.parent))
-from artifact_names import artifact_name
+from artifact_names import artifact_name, workbook_path
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Build result4.xlsx from q4_result_data.json.")
     parser.add_argument("--root", type=Path, default=PACKAGE / "data")
     parser.add_argument("--output", type=Path,
-                        default=PACKAGE / "results" / "q4" / artifact_name("q4", "workbook"))
+                        default=workbook_path(PACKAGE / "results", "q4"))
     args = parser.parse_args()
 
     data = json.loads((PACKAGE / "results" / "q4" / artifact_name("q4", "result_data")).read_text(encoding="utf-8"))

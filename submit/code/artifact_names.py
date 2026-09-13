@@ -6,6 +6,8 @@ every solver and checker uses the same contract.
 """
 from __future__ import annotations
 
+from pathlib import Path
+
 
 ARTIFACT_NAMES = {
     "q1": {
@@ -76,6 +78,11 @@ def artifact_name(question: str, key: str) -> str:
         return ARTIFACT_NAMES[question][key]
     except KeyError as exc:
         raise KeyError(f"Unknown artifact name: {question}/{key}") from exc
+
+
+def workbook_path(results_root: Path, question: str) -> Path:
+    """Return the package-level path for a result workbook."""
+    return results_root / artifact_name(question, "workbook")
 
 
 def figure_name(question: str, key: str) -> str:

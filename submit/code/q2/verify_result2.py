@@ -11,13 +11,13 @@ HERE = Path(__file__).resolve().parent
 PACKAGE = HERE.parents[1]
 if str(HERE.parent) not in sys.path:
     sys.path.insert(0, str(HERE.parent))
-from artifact_names import artifact_name
+from artifact_names import artifact_name, workbook_path
 OUT = PACKAGE / "results" / "q2"
 summary = json.loads((OUT / artifact_name("q2", "validation")).read_text(encoding="utf-8"))
 input_path = PACKAGE / "data" / "附件1.xlsx"
 assert hashlib.sha256(input_path.read_bytes()).hexdigest() == summary["input_sha256"]
 data = json.loads((OUT / artifact_name("q2", "result_data")).read_text(encoding="utf-8"))
-book = openpyxl.load_workbook(OUT / artifact_name("q2", "workbook"), read_only=True, data_only=True)
+book = openpyxl.load_workbook(workbook_path(PACKAGE / "results", "q2"), read_only=True, data_only=True)
 assert book.sheetnames == ["温度", "水分浓度"]
 checks = []
 with np.load(OUT / artifact_name("q2", "full_precision")) as full:
