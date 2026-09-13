@@ -1,0 +1,287 @@
+{
+  "model": "Appendix 3 throughout; 1D radial; Kirchhoff moisture flux; effective moisture Robin boundary; no latent heat",
+  "moisture_face_flux": "8-point Gauss-Legendre Kirchhoff average in C at arithmetic face temperature",
+  "input_sha256": "7ef32870abeef420b89560b2530ff60dfe4255917805151d89988d0311af9dd7",
+  "duration_s": 10800,
+  "grid_intervals": 400,
+  "rtol": 2e-10,
+  "atol": 2e-12,
+  "max_step_s": 5,
+  "interpolation": "detected independent stage boundaries: stretched exponential before the temperature/moisture-specific split, 1800 s blends, then separate measured tail means",
+  "boundary_mode": "staged",
+  "boundary_metadata": {
+    "mode": "stretched_exp_plus_independent_constant_stages",
+    "fit_endpoint_policy": "before_each_transition",
+    "fit_endpoint_temperature_s": 5280.0,
+    "fit_endpoint_moisture_s": 6780.0,
+    "transition_s": 1800.0,
+    "phase_temperature": {
+      "phase_s": 5280.0,
+      "window_s": 1800.0,
+      "persist_windows": 3,
+      "range_tol": 0.7199999999999989,
+      "slope_tol": 0.00039999999999999937,
+      "plateau_mean": 49.88579738562092,
+      "plateau_std": 0.24418245334060337,
+      "smoothing_window_points": 11,
+      "sigma_residual": 0.18085300839160726,
+      "resolution_scale": 0.17999999999999972,
+      "windows": [
+        {
+          "start_s": 5280.0,
+          "range": 0.7019254079254083,
+          "slope": 0.0003492325707446722
+        },
+        {
+          "start_s": 7140.0,
+          "range": 0.2735431235431207,
+          "slope": 0.00011307176918064573
+        },
+        {
+          "start_s": 9000.0,
+          "range": 0.23356876456877274,
+          "slope": 5.5206892122214996e-05
+        }
+      ]
+    },
+    "phase_moisture": {
+      "phase_s": 6780.0,
+      "window_s": 1800.0,
+      "persist_windows": 3,
+      "range_tol": 0.0008599999999999997,
+      "slope_tol": 4.777777777777776e-07,
+      "plateau_mean": 0.04982109375,
+      "plateau_std": 0.0003401950213613585,
+      "smoothing_window_points": 11,
+      "sigma_residual": 0.00017006700699279898,
+      "resolution_scale": 0.0002149999999999999,
+      "windows": [
+        {
+          "start_s": 6780.0,
+          "range": 0.0008256177156177186,
+          "slope": 4.286188497882165e-07
+        },
+        {
+          "start_s": 8640.0,
+          "range": 0.00038191142191142113,
+          "slope": 1.4159460611072885e-07
+        },
+        {
+          "start_s": 10500.0,
+          "range": 0.00023636363636363872,
+          "slope": 3.428030303030979e-08
+        }
+      ]
+    },
+    "phase_gap_s": 1500.0,
+    "transition_temperature": {
+      "center_s": 5280.0,
+      "left_s": 5280.0,
+      "right_s": 7080.0,
+      "width_s": 1800.0
+    },
+    "transition_moisture": {
+      "center_s": 6780.0,
+      "left_s": 6780.0,
+      "right_s": 8580.0,
+      "width_s": 1800.0
+    },
+    "plateau_temperature": 49.88579738562092,
+    "plateau_moisture": 0.04982109375,
+    "fit_temperature": {
+      "method": "stretched_exp",
+      "endpoint_s": 5280.0,
+      "initial_value": 28.0,
+      "amplitude": 22.191887972621366,
+      "tau_s": 1912.6395873822344,
+      "exponent": 1.1352502522080914,
+      "rmse": 0.1327058496924961,
+      "max_abs": 0.28347099398069275
+    },
+    "fit_moisture": {
+      "method": "stretched_exp",
+      "endpoint_s": 6780.0,
+      "initial_value": 0.01963,
+      "amplitude": 0.030898673671139184,
+      "tau_s": 2770.487032431583,
+      "exponent": 1.24353266724771,
+      "rmse": 0.00018241672775162645,
+      "max_abs": 0.00043936966007962486
+    }
+  },
+  "raw_environment_sha256": "7ef32870abeef420b89560b2530ff60dfe4255917805151d89988d0311af9dd7",
+  "tail_assumption": "hold the detected tail mean after the 1800 s transition; the phase point and tail mean are recorded in boundary_metadata",
+  "H_W_m2_K": 25.0,
+  "HM_m_s": 8e-07,
+  "jacobian_relative_error": 4.0235530350447686e-16,
+  "convergence": [
+    {
+      "intervals": 200,
+      "dr_m": 0.0001,
+      "moisture_balance_error": 2.7200464103316335e-15,
+      "heat_rate_balance_error": 4.440892098500626e-16,
+      "elapsed_s": 3.547491599994828
+    },
+    {
+      "intervals": 300,
+      "dr_m": 6.666666666666667e-05,
+      "moisture_balance_error": 3.3306690738754696e-15,
+      "heat_rate_balance_error": 2.220446049250313e-16,
+      "max_diff_T": 7.4986182454495065e-06,
+      "table_diff_T": 7.341296466734093e-06,
+      "max_diff_location_T": {
+        "time_s": 3187,
+        "r_cm": 2.0
+      },
+      "max_diff_C": 0.002456984313278898,
+      "table_diff_C": 5.350048942087682e-06,
+      "max_diff_location_C": {
+        "time_s": 1,
+        "r_cm": 2.0
+      },
+      "elapsed_s": 3.946189400012372
+    },
+    {
+      "intervals": 400,
+      "dr_m": 5e-05,
+      "moisture_balance_error": 4.884981308350689e-15,
+      "heat_rate_balance_error": 2.220446049250313e-16,
+      "max_diff_T": 2.6245003823532898e-06,
+      "table_diff_T": 2.5694331284853433e-06,
+      "max_diff_location_T": {
+        "time_s": 3187,
+        "r_cm": 2.0
+      },
+      "max_diff_C": 0.0007525555292784425,
+      "table_diff_C": 1.8725986619116952e-06,
+      "max_diff_location_C": {
+        "time_s": 1,
+        "r_cm": 2.0
+      },
+      "elapsed_s": 4.546384000001126
+    }
+  ],
+  "time_check": {
+    "T": 5.004220469118081e-07,
+    "C": 2.441257107577144e-08
+  },
+  "initial_properties": {
+    "rho_cp": 3334694.7943661967,
+    "k": 0.48295774647887324,
+    "D": 5.641680373025668e-09
+  },
+  "final_D_center_surface": [
+    1.2356073337845373e-08,
+    1.0215279537064677e-08
+  ],
+  "environment_10800": [
+    10800.0,
+    49.88579738562092,
+    0.04982109375
+  ],
+  "mean_T_10800": 49.80460654578454,
+  "mean_C_10800": 1.3823901934629166,
+  "table_times_h": [
+    0.5,
+    1.0,
+    1.5,
+    2.0,
+    2.5,
+    3.0
+  ],
+  "table_r_cm": [
+    0,
+    0.5,
+    1,
+    1.5,
+    2
+  ],
+  "table_T": [
+    [
+      32.18409502189592,
+      32.380258646866004,
+      32.974015595930155,
+      33.98043704025712,
+      35.42906249456276
+    ],
+    [
+      40.36574363429816,
+      40.53626195987351,
+      41.041219181600795,
+      41.86161837054588,
+      42.97253904906112
+    ],
+    [
+      45.84456049010187,
+      45.93498319908427,
+      46.20062952021478,
+      46.626504377018136,
+      47.19449762914296
+    ],
+    [
+      48.55541555647723,
+      48.59228136553429,
+      48.69958243673719,
+      48.868239823107245,
+      49.085934796614474
+    ],
+    [
+      49.50615204775848,
+      49.51679828106876,
+      49.54778570918964,
+      49.59650465808306,
+      49.65944284874958
+    ],
+    [
+      49.782782866728176,
+      49.78570275685014,
+      49.79420635425234,
+      49.80759024320104,
+      49.82491080821335
+    ]
+  ],
+  "table_C": [
+    [
+      2.549934695875038,
+      2.548889690986401,
+      2.525601240737572,
+      2.3257079139793575,
+      1.648842317598573
+    ],
+    [
+      2.5257380848047366,
+      2.4947898455122415,
+      2.357853513152457,
+      2.0230519431414975,
+      1.47092349398332
+    ],
+    [
+      2.386219169233272,
+      2.3257919890177514,
+      2.1345216581385125,
+      1.8019864762921403,
+      1.3476783775890242
+    ],
+    [
+      2.1704095378611434,
+      2.1079682967854243,
+      1.9231768819093407,
+      1.625838040435223,
+      1.2320181846857527
+    ],
+    [
+      1.9556629291642182,
+      1.8997248298181157,
+      1.7354560642158343,
+      1.4720276866363615,
+      1.1171263209724192
+    ],
+    [
+      1.7657726517746972,
+      1.7162288639600944,
+      1.5701246973405254,
+      1.333298469729813,
+      1.0074684024264957
+    ]
+  ]
+}

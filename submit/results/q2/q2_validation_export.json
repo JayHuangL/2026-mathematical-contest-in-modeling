@@ -1,0 +1,18 @@
+{
+  "checks": [
+    {
+      "sheet": "温度",
+      "time_rows": 10800,
+      "distance_columns": 21,
+      "numeric_values_verified": 226800
+    },
+    {
+      "sheet": "水分浓度",
+      "time_rows": 10800,
+      "distance_columns": 21,
+      "numeric_values_verified": 226800
+    }
+  ],
+  "all_453600_values_match": true,
+  "input_unchanged": true
+}
