@@ -1,42 +1,89 @@
-# A题四问整合提交包
+# A题可复现提交附件
 
-`paper.md` 是四问合并后的论文初稿；`data/` 保存题目附件和结果模板，`code/` 保存统一求解、导出与核验程序，`results/` 保存当前已核验的数值结果，`figures/` 保存正文引用的图片。全部图片按 `paper.md` 首次出现顺序统一编号为图 01--图 14，包括根目录下的圆柱体与 `dr` 示意图、控制体守恒示意图。`run_all.py` 是提交包的唯一总入口，负责四问的执行顺序、边界拟合窗口、结果重建和统一核验；`code/q1`--`code/q4` 仅作为其内部的可追溯实现单元。
+本目录是 A 题的代码、输入数据、结果数据、图片和环境配置附件，不包含论文 DOCX。所有脚本均以本目录为根目录解析路径，可以脱离 `questions\A题\` 和根目录论文单独运行。
 
-## 复现
+## 数据和结果边界
 
-在 `submit/all/` 目录执行：
+`data\` 中只有两份原始数据：
+
+- `附件1.xlsx`：烘房温度和环境水分浓度记录。
+- `附件2.xlsx`：药材半径记录。
+
+`data\result1_template.xlsx` 至 `data\result4_template.xlsx` 是题目要求的结果模板，不是原始观测数据。求解产生的 JSON、NPZ、CSV 和验证记录按问题写入 `results\q1` 至 `results\q4`，四个结果工作簿写入 `results\` 顶层，模型图片统一写入 `figures\`。
+
+## 环境
+
+推荐使用本机已有的 Conda 环境 `2026modeling`：
 
 ```powershell
-conda env create -f environment.yml       # 已有 2026modeling 环境时跳过
+conda run --no-capture-output -n 2026modeling python --version
+```
+
+`environment.yml` 记录了该环境所需的 Python、NumPy、SciPy、Matplotlib、OpenPyXL 和 Threadpoolctl 版本约束。若本机尚未创建该环境，可执行：
+
+```powershell
+conda env create -f environment.yml
+```
+
+## 复现命令
+
+以下命令均在 `submit\` 目录执行。
+
+### 快速链路检查
+
+```powershell
 conda run --no-capture-output -n 2026modeling python run_all.py --quick
 ```
 
-`--quick` 会把提交包复制到临时目录，用较小空间网格检查程序链路，正式 `results/` 不会被覆盖。提交结果对应的完整网格、时间收紧、事件和敏感性核验使用：
+`--quick` 会将提交包复制到系统临时目录，用较小网格检查四问求解、工作簿导出、图片生成和验证链路；正式 `results\` 和 `figures\` 不会被覆盖，临时副本由程序自动清理。
+
+### 正式四问复现
 
 ```powershell
 conda run --no-capture-output -n 2026modeling python run_all.py
 ```
 
-完整运行会重建 `results/q1`--`results/q4` 下的 JSON、NPZ、Excel 和验证记录，并以当前 Kirchhoff 通量模型重新计算第二问的参数敏感性、重绘图 08--09；预计耗时取决于机器性能。若只需重建工作簿，可运行 `python code/build_workbooks.py`；若只需检查现有结果，可运行 `python code/verify_all.py`。
+正式运行使用论文对应的网格和时间精度设置，重建 `results\q1` 至 `results\q4` 的数值文件、`results\result1.xlsx` 至 `results\result4.xlsx` 四个结果工作簿、验证记录和代码生成图片。运行时间取决于机器性能。
 
-第四题求解器还会在 `results/q4/` 生成半径连续表示方法比较表 `radius_method_comparison.csv`、原始半径散点图和候选方法比较图，并由总入口同步到 `figures/q4/`。
+第六节的数值收敛、参数敏感性和长期边界扰动表依赖四问正式结果，正式四问运行完成后再执行：
 
-四问的水分内部界面统一采用 Kirchhoff 通量：第一问沿相邻节点的含水率区间积分 `D(C)`；第二至第四问先取界面温度 `(T_i+T_{i+1})/2`，再沿含水率区间积分 `D(T_face,C)`。积分使用 8 点 Gauss--Legendre 求积，解析 Jacobian 使用同一通量的端点导数。导热系数 `k` 仍采用相邻节点算术平均。
-
-完整模式使用报告对应的收敛网格：第一问 N=800、1600、3200、6400，第二问 N=200、300、400，第三、四问分别 N=220、300；边界处理由 `run_all.py` 固定为第一问拟合 0--1800 s，第二至第四问使用完整 0--14400 s 记录识别稳定阶段，再将温度和环境水分浓度分别拟合到稳定分界点（5280 s、6780 s）。第二至第四问以各自稳定分界点作为过渡点1，在后续一个 1800 s 采样步长内平滑接入尾段均值，过渡区分别为 5280--7080 s 和 6780--8580 s，不取共同分界点。`--quick` 仅用于快速检查链路，不替代正式结果。
-
-## 目录约定
-
-```text
-all/
-├─ paper.md                 合并论文初稿
-├─ run_all.py               统一复现入口
-├─ data/                    附件1、附件2及四个结果模板
-├─ code/q1...q4/            四问求解器及各问专用边界工具
-├─ code/build_workbooks.py  从 JSON 重建四个工作簿
-├─ code/verify_all.py       独立结构、行数、哈希和事件检查
-├─ results/q1...q4/         数值输出与验证记录
-└─ figures/                 论文引用的结果图和有限体积示意图
+```powershell
+conda run --no-capture-output -n 2026modeling python code\p6\run_p6.py
+conda run --no-capture-output -n 2026modeling python code\p6\verify_p6.py
 ```
 
-所有脚本只读本目录下的 `data/` 以及前序步骤在 `results/` 中生成的统一中间结果，新的输出仍写入 `results/`；不依赖 `questions/A题/` 或 `submit/p1`--`submit/p4` 的外部文件。
+### 单独导出和核验
+
+```powershell
+conda run --no-capture-output -n 2026modeling python code\build_workbooks.py
+conda run --no-capture-output -n 2026modeling python code\verify_all.py
+```
+
+`build_workbooks.py` 从 `results\q1` 至 `results\q4` 的 JSON 结果重建顶层的 `results\result1.xlsx` 至 `results\result4.xlsx`。`verify_all.py` 检查输入哈希、数组形状、工作簿表头和行数、工作簿与 JSON 数值一致性、终止阈值、图片和旧文件名残留。
+
+## 目录结构
+
+```text
+submit/
+├─ README.md
+├─ environment.yml
+├─ run_all.py
+├─ data/
+│  ├─ 附件1.xlsx
+│  ├─ 附件2.xlsx
+│  └─ result1_template.xlsx ... result4_template.xlsx
+├─ code/
+│  ├─ q1/ ... q4/       四问求解器、导出器和专项核验器
+│  ├─ p6/               第六节三类误差表的生成与核验
+│  ├─ build_workbooks.py
+│  ├─ kirchhoff_flux.py
+│  └─ verify_all.py
+├─ results/
+│  ├─ result1.xlsx ... result4.xlsx  四问结果工作簿（顶层）
+│  ├─ q1/ ... q4/       四问 JSON、NPZ、CSV 和验证记录
+│  └─ p6/               第六节 CSV 表和摘要 JSON
+└─ figures/
+   ├─ q1/ ... q4/       四问结果图和诊断图
+```
+
+`results\` 不放 Markdown、PNG 等展示文件；展示图片只放在 `figures\`。运行产生的 Python 缓存目录不属于提交内容。

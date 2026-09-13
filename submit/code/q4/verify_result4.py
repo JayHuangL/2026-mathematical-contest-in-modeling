@@ -8,10 +8,10 @@ HERE=Path(__file__).resolve().parent
 PACKAGE=HERE.parent.parent
 if str(HERE.parent) not in sys.path:
     sys.path.insert(0,str(HERE.parent))
-from artifact_names import artifact_name
+from artifact_names import artifact_name, workbook_path
 p=argparse.ArgumentParser()
 p.add_argument('--root',type=Path,default=PACKAGE/'data')
-p.add_argument('--book',type=Path,default=PACKAGE/'results'/'q4'/artifact_name('q4','workbook'))
+p.add_argument('--book',type=Path,default=workbook_path(PACKAGE/'results','q4'))
 a=p.parse_args()
 s=json.loads((PACKAGE/'results'/'q4'/artifact_name('q4','validation')).read_text(encoding='utf-8'))
 data=json.loads((PACKAGE/'results'/'q4'/artifact_name('q4','result_data')).read_text(encoding='utf-8'))

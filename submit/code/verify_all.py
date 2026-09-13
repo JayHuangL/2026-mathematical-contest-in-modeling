@@ -4,13 +4,12 @@ from __future__ import annotations
 import csv
 import hashlib
 import json
-import re
 from pathlib import Path
 
 import numpy as np
 import openpyxl
 
-from artifact_names import artifact_name, figure_name, global_artifact_name
+from artifact_names import artifact_name, figure_name, global_artifact_name, workbook_path
 
 
 HERE = Path(__file__).resolve().parent
@@ -69,7 +68,7 @@ def _assert_cell(actual, expected, label: str) -> None:
 def _workbook_matches_payload(question: str, sheet_keys: list[tuple[str, str]], headers: list[object]) -> dict:
     folder = RESULTS / question
     payload = json.loads((folder / artifact_name(question, "result_data")).read_text(encoding="utf-8"))
-    book = openpyxl.load_workbook(folder / artifact_name(question, "workbook"), data_only=True, read_only=True)
+    book = openpyxl.load_workbook(workbook_path(RESULTS, question), data_only=True, read_only=True)
     if book.sheetnames[:len(sheet_keys)] != [name for name, _ in sheet_keys]:
         raise AssertionError(f"{question}: unexpected workbook sheets")
     times = payload["t_s"]
@@ -100,10 +99,10 @@ def main() -> None:
         "q2": _payload_check("q2", 10800, ("T", "C")),
         "q3": _payload_check("q3", 3461, ("C",)),
         "q4": _payload_check("q4", 3077, ("C",)),
-        "q1_workbook": _workbook_shape(RESULTS / "q1" / artifact_name("q1", "workbook"), ["温度", "水分浓度"], 1800, 22),
-        "q2_workbook": _workbook_shape(RESULTS / "q2" / artifact_name("q2", "workbook"), ["温度", "水分浓度"], 10800, 22),
-        "q3_workbook": _workbook_shape(RESULTS / "q3" / artifact_name("q3", "workbook"), ["Sheet1"], 3461, 22),
-        "q4_workbook": _workbook_shape(RESULTS / "q4" / artifact_name("q4", "workbook"), ["Sheet1"], 3077, 22),
+        "q1_workbook": _workbook_shape(workbook_path(RESULTS, "q1"), ["温度", "水分浓度"], 1800, 22),
+        "q2_workbook": _workbook_shape(workbook_path(RESULTS, "q2"), ["温度", "水分浓度"], 10800, 22),
+        "q3_workbook": _workbook_shape(workbook_path(RESULTS, "q3"), ["Sheet1"], 3461, 22),
+        "q4_workbook": _workbook_shape(workbook_path(RESULTS, "q4"), ["Sheet1"], 3077, 22),
         "q1_workbook_values": _workbook_matches_payload(
             "q1", [("温度", "T"), ("水分浓度", "C")],
             ["时间\\到药材中心的距离", *[round(i / 10, 1) for i in range(21)]],
@@ -161,7 +160,7 @@ def main() -> None:
     for question in ("q1", "q2", "q3", "q4"):
         folder = RESULTS / question
         generated_files.extend([
-            folder / artifact_name(question, "workbook"),
+            workbook_path(RESULTS, question),
             folder / artifact_name(question, "result_data"),
             folder / artifact_name(question, "full_precision"),
             folder / artifact_name(question, "validation"),
@@ -227,14 +226,11 @@ def main() -> None:
         for path in generated_figure_paths
     }
 
-    paper_text = (PACKAGE / "paper.md").read_text(encoding="utf-8")
-    local_images = sorted(set(re.findall(r"!\[[^\]]*\]\(([^)]+)\)", paper_text)))
-    missing_images = [reference for reference in local_images
-                      if not (PACKAGE / reference).exists()]
-    if missing_images:
-        raise AssertionError(f"Paper references missing images: {missing_images}")
-    checks["paper_image_references"] = {
-        "count": len(local_images), "all_exist": True, "paths": local_images
+    checks["figure_assets"] = {
+        "count": len(generated_figure_paths),
+        "all_exist": True,
+        "paths": [path.relative_to(PACKAGE).as_posix()
+                  for path in generated_figure_paths],
     }
 
     # These files are upstream data-preprocessing evidence or manually authored
@@ -261,25 +257,11 @@ def main() -> None:
         "input_dependency": "附件1.xlsx (unchanged hash recorded above)",
     }
 
-    # The two CSV files are upstream numerical diagnostics.  The geometry
-    # diagrams are manually authored assets and are optional for validating
-    # the code-generated artifacts in this package.
+    # The two CSV files are upstream numerical diagnostics.  They are kept as
+    # result evidence and are checked against the current input and source.
     static_assets = [boundary_cv_path, endpoint_path]
     checks["static_assets_sha256"] = {
         path.relative_to(PACKAGE).as_posix(): _hash(path) for path in static_assets
-    }
-    manual_geometry_assets = [
-        PACKAGE / "figures" / "图03_圆柱体与dr示意图.pdf",
-        PACKAGE / "figures" / "图03_圆柱体与dr示意图.png",
-        PACKAGE / "figures" / "图04_有限体积离散示意图.pdf",
-        PACKAGE / "figures" / "图04_有限体积离散示意图.png",
-    ]
-    checks["manual_geometry_assets"] = {
-        "all_exist": all(path.exists() for path in manual_geometry_assets),
-        "present": [path.relative_to(PACKAGE).as_posix()
-                    for path in manual_geometry_assets if path.exists()],
-        "missing": [path.relative_to(PACKAGE).as_posix()
-                    for path in manual_geometry_assets if not path.exists()],
     }
     output = RESULTS / global_artifact_name("reproducibility_check")
     output.write_text(json.dumps(checks, ensure_ascii=False, indent=2), encoding="utf-8")

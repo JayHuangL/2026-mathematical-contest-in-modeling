@@ -7,7 +7,7 @@ from pathlib import Path
 
 import openpyxl
 
-from artifact_names import artifact_name
+from artifact_names import artifact_name, workbook_path
 
 
 HERE = Path(__file__).resolve().parent
@@ -37,14 +37,14 @@ def _write_two_sheet(question: str, template_name: str, keys: tuple[str, str]) -
             for col, value in enumerate(values, 2):
                 sheet.cell(row, col, value).number_format = "0.0000"
         sheet.freeze_panes = "B2"
-    book.save(folder / artifact_name(question, "workbook"))
+    book.save(workbook_path(RESULTS, question))
     book.close()
 
 
 def _write_q3() -> None:
     folder = RESULTS / "q3"
     payload = json.loads((folder / artifact_name("q3", "result_data")).read_text(encoding="utf-8"))
-    output = folder / artifact_name("q3", "workbook")
+    output = workbook_path(RESULTS, "q3")
     shutil.copy2(DATA / "result3_template.xlsx", output)
     book = openpyxl.load_workbook(output)
     sheet = book["Sheet1"]
@@ -64,7 +64,7 @@ def _write_q3() -> None:
 def _write_q4() -> None:
     folder = RESULTS / "q4"
     payload = json.loads((folder / artifact_name("q4", "result_data")).read_text(encoding="utf-8"))
-    output = folder / artifact_name("q4", "workbook")
+    output = workbook_path(RESULTS, "q4")
     shutil.copy2(DATA / "result4_template.xlsx", output)
     book = openpyxl.load_workbook(output)
     sheet = book["Sheet1"]

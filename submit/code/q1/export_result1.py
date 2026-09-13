@@ -1,7 +1,7 @@
 """Export the Question 1 JSON payload to the required result1.xlsx workbook.
 
-Run this file through submit/all/run_all.py or directly from the integrated
-package. The template is kept in data/result1_template.xlsx.
+Run this file through run_all.py or directly from the integrated package.
+The template is kept in data/result1_template.xlsx.
 """
 
 from __future__ import annotations
@@ -17,10 +17,10 @@ HERE = Path(__file__).resolve().parent
 PACKAGE = HERE.parent.parent
 if str(HERE.parent) not in sys.path:
     sys.path.insert(0, str(HERE.parent))
-from artifact_names import artifact_name
+from artifact_names import artifact_name, workbook_path
 TEMPLATE = PACKAGE / "data" / "result1_template.xlsx"
 PAYLOAD = PACKAGE / "results" / "q1" / artifact_name("q1", "result_data")
-OUTPUT = PACKAGE / "results" / "q1" / artifact_name("q1", "workbook")
+OUTPUT = workbook_path(PACKAGE / "results", "q1")
 
 
 def write_sheet(ws, times, positions, values):

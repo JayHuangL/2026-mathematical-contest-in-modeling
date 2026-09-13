@@ -11,10 +11,10 @@ HERE = Path(__file__).resolve().parent
 PACKAGE = HERE.parent.parent
 if str(HERE.parent) not in sys.path:
     sys.path.insert(0, str(HERE.parent))
-from artifact_names import artifact_name
+from artifact_names import artifact_name, workbook_path
 TEMPLATE = PACKAGE / "data" / "result2_template.xlsx"
 DATA = PACKAGE / "results" / "q2" / artifact_name("q2", "result_data")
-OUTPUT = PACKAGE / "results" / "q2" / artifact_name("q2", "workbook")
+OUTPUT = workbook_path(PACKAGE / "results", "q2")
 
 
 def main():
