@@ -1,4 +1,4 @@
-"""Q4: moving-radius heat/moisture model on material coordinates.
+"""第四问：材料坐标下的变半径传热/传质模型。
 python 第四问/solve_q4.py --check-time --comparisons
 """
 from pathlib import Path
@@ -78,7 +78,7 @@ def _radius_metrics(curve,t_train,r_train,t_test,r_test):
     }
 
 def radius_diagnostics(radius,out):
-    """Validate radius candidates and render the final PCHIP representation."""
+    """核验候选半径曲线，并绘制最终采用的 PCHIP 表示。"""
     import matplotlib
     matplotlib.use('Agg')
     import matplotlib.pyplot as plt
@@ -244,7 +244,7 @@ def unit_checks(q2,env,radius):
     y=np.r_[28+7*fixed.x**2,2.55-.8*fixed.x**2,0.]
     delta=float(np.max(abs(fixed.rhs(1200,y)-original.rhs(1200,y))))
     assert delta<1e-10
-    # No environmental driving force: uniform fields remain uniform under shrinkage.
+    # 无环境驱动力时，均匀场在收缩过程中仍保持均匀。
     closed=Model(40,np.array([[0.,T0,C0],[259200.,T0,C0]]),radius)
     initial=np.r_[np.full(41,T0),np.full(41,C0),0.]
     invariant=max(float(np.max(abs(closed.rhs(t,initial)))) for t in [0.,1800.,21600.,259200.])
@@ -344,13 +344,10 @@ def graph(result,out):
         [(0.00,'#f0f0f0'),(0.13,'#d9d9d9'),(0.20,'#bdbdbd'),
          (0.24,'#9ecae1'),(0.50,'#3182bd'),(1.00,'#08519c')])
     moisture_cmap.set_bad('#ffffff')
-    # Emphasize the low-concentration range while retaining a monotone
-    # gray-to-blue interpretation for the concentration field.
-    # A sublinear map places the median concentration near the visual midpoint,
-    # keeping gray and blue regions visually comparable.
-    # Start the displayed scale at 0.08 kg/kg; lower values are clipped to
-    # the light-gray endpoint so 0.08 is the bottom colorbar tick.  The
-    # milder sublinear exponent keeps 0.12 and 0.15 close to the bottom.
+    # 突出低浓度区间，同时保留含水率场从灰色到蓝色的单调颜色含义。
+    # 次线性映射将中位浓度放在视觉中部附近，使灰色区和蓝色区的面积观感保持可比。
+    # 显示刻度从 0.08 kg/kg 开始；更低的数值裁剪到浅灰色端点，因此 0.08 是色标
+    # 的底部刻度。较温和的次线性指数使 0.12 和 0.15 仍靠近色标底部。
     moisture_norm=PowerNorm(gamma=0.5,vmin=0.08,
                             vmax=float(np.nanmax(moisture)),clip=True)
     moisture_ticks=np.array([0.08,0.12,0.15,0.30,0.60,1.00,1.50,2.00,2.55])
@@ -383,9 +380,9 @@ def main():
     p.add_argument('--check-time',action='store_true')
     p.add_argument('--comparisons',action='store_true')
     p.add_argument('--boundary-mode',choices=('staged','raw'),default='staged',
-                   help='Use independent detected temperature/moisture stage boundaries (default) or raw 60 s knots.')
+                   help='使用分别检测的温度/含水率阶段边界（默认），或使用原始 60 s 节点。')
     p.add_argument('--fit-endpoint-s',type=float,default=None,
-                   help='Optional common fit endpoint; default is each variable transition point.')
+                   help='可选的共同拟合终点；默认使用各变量自身的过渡点。')
     p.add_argument('--radius-method',choices=('pchip','linear','akima','cubic_spline'),default='pchip')
     a=p.parse_args();a.out.mkdir(parents=True,exist_ok=True)
     raw_env=read_xlsx(PACKAGE/'data'/'附件1.xlsx')

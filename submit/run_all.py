@@ -1,9 +1,8 @@
-"""Reproduce the integrated A-problem calculations from one entry point.
+"""从一个入口复现 A 题的完整计算流程。
 
-Default mode uses the grids and checks reported in the paper.  ``--quick``
-keeps the same equations and output formats but uses smaller grids for an
-isolated smoke test.  Numerical artifacts stay under ``results/``; the paper
-figures are written into ``figures/``.
+默认模式使用论文中报告的网格和核验项。``--quick`` 保持相同的方程和输出格式，
+但使用更小的网格执行隔离式冒烟测试。数值产物保存在 ``results/``，论文图像写入
+``figures/``。
 """
 from __future__ import annotations
 
@@ -24,11 +23,10 @@ if str(CODE) not in sys.path:
     sys.path.insert(0, str(CODE))
 from artifact_names import FIGURE_NAMES, figure_name
 
-# Boundary-window contract for the submitted four-question package.
-# Q1 is an early-time identification problem.  Q2--Q4 use the complete
-# Attachment-1 record to detect independent stability transitions and estimate
-# tail means, but fit each stretched-exponential branch only up to its own
-# transition point before adding an 1800 s blend and constant tail.
+# 提交包四个问题共用的边界窗口约定。
+# 第一问是早期时段的辨识问题。第二至第四问使用附件1的完整记录，分别检测稳定阶段
+# 并估计尾段均值；每条拉伸指数分支只拟合到各自的过渡点，再接入 1800 s 过渡段和
+# 恒定尾段。
 Q1_FIT_ENDPOINT_S = 1800.0
 
 
@@ -41,7 +39,7 @@ def run(script: Path, *args: str) -> None:
 
 
 def run_isolated_quick() -> None:
-    """Run the smoke test in a disposable copy so formal results stay intact."""
+    """在临时副本中执行冒烟测试，以保持正式结果不变。"""
     with tempfile.TemporaryDirectory(prefix="solo_math_modeling_quick_") as temp:
         quick_package = Path(temp) / PACKAGE.name
         shutil.copytree(
@@ -55,7 +53,7 @@ def run_isolated_quick() -> None:
         env = os.environ.copy()
         env.setdefault("PYTHONDONTWRITEBYTECODE", "1")
         subprocess.run(command, cwd=quick_package, check=True, env=env)
-    print("Quick smoke test passed in a temporary copy; formal results were not changed.",
+    print("临时副本中的快速冒烟测试通过；正式结果未被修改。",
           flush=True)
 
 
@@ -75,7 +73,7 @@ def check_main_figures() -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--quick", action="store_true", help="run a smaller smoke-test grid")
+    parser.add_argument("--quick", action="store_true", help="使用较小网格运行冒烟测试")
     parser.add_argument("--_isolated-quick", action="store_true", help=argparse.SUPPRESS)
     args = parser.parse_args()
 
@@ -90,7 +88,7 @@ def main() -> None:
         q3_extra = []
         q4_extra = []
     else:
-        # These are the formal grids used by the reported validation records.
+        # 这些是论文核验记录所使用的正式网格。
         q1_grids, q2_grids = [800, 1600, 3200, 6400], [200, 300, 400]
         q3_grids, q4_grids = [220, 300], [200, 300]
         common = ["--check-time"]

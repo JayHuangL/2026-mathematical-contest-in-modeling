@@ -17,7 +17,7 @@ from artifact_names import artifact_name, workbook_path
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Build result4.xlsx from q4_result_data.json.")
+    parser = argparse.ArgumentParser(description="根据 q4_result_data.json 构建 result4.xlsx。")
     parser.add_argument("--root", type=Path, default=PACKAGE / "data")
     parser.add_argument("--output", type=Path,
                         default=workbook_path(PACKAGE / "results", "q4"))

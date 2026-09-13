@@ -7,25 +7,25 @@
   ],
   "model_version": "current submit q1-q4 formal results",
   "source_hashes": {
-    "code/p6/run_p6.py": "a4c4c56c89b5c127ee7c0d569bd0f51897920170b2ee145435ac0a50fbf84861",
-    "code/q1/solve_q1.py": "f00700a92f7241142edcbc8230bc50eeea077e170fd1038e03fa4b9e1e2144d6",
-    "code/q2/solve_q2.py": "29a09209a071007a2ecc198c44b38767b6c4a713210ebbe7051e28b744748bcc",
-    "code/q2/run_sensitivity.py": "76c77e80c85ea13f22d43bdfa15c772f91bbb64e2cd8d4d1e57b51eb98031300",
-    "code/q2/boundary_stage.py": "8960120bb4ca82f86e02b14e530576d5b450d87490551fb21f3d3067f64a4914",
-    "code/q3/boundary_stage.py": "d2f83a52f56ae69eeabe2b32a450580566274e0b9917e6f8db24bae9c4aa51b3",
-    "code/q3/solve_q3.py": "fdd4ae9a1ce84a47af177d651dee6a23bec40d04cfed4aaf8b5189456c994d0f",
-    "code/q4/boundary_stage.py": "d2f83a52f56ae69eeabe2b32a450580566274e0b9917e6f8db24bae9c4aa51b3",
-    "code/q4/solve_q4.py": "b8ff988e7277030a1c7b9c5f23a813d1b9f5bbad50d30fc4c659b433fa381944",
-    "code/kirchhoff_flux.py": "61657fa3544dd5157560120df6bbdb798e71d5e004f942ada3f47e57ab9cadb1"
+    "code/p6/run_p6.py": "686c362e0af6e8765e77a4b452fe8d1bf9ec299f298d13d84f13c8729e51b593",
+    "code/q1/solve_q1.py": "7d1e2fd726d9bee83e794d7900620c8f16b1220b6feedab33f0cb4ed29df89c7",
+    "code/q2/solve_q2.py": "2f629109faad43ee53a3e87e0c2f6daa35b60251e3514e487cc63c88ee5d976f",
+    "code/q2/run_sensitivity.py": "1a51444e5e3c131562a6c8ffff3e0d35bf92bca8bd41b0f07b75e3c8b7d6136e",
+    "code/q2/boundary_stage.py": "c777f49226414eafab98447c2615b12b7828895e94d96e3f437fa26f014793dc",
+    "code/q3/boundary_stage.py": "d4d41143d6c973a2841bbd1aa5ae9e91b43777b1ebf8b4aca301d3e09bb4a550",
+    "code/q3/solve_q3.py": "0513025675122e75ad478a33191afa73fd2db37b4f705a109a696912c9bc1972",
+    "code/q4/boundary_stage.py": "d4d41143d6c973a2841bbd1aa5ae9e91b43777b1ebf8b4aca301d3e09bb4a550",
+    "code/q4/solve_q4.py": "16b86f90d985a607746ffdaea057beae751257b9c321d30d5eed3cc25d10ca51",
+    "code/kirchhoff_flux.py": "294634e3cd94777b8694ccbb0bf980e2779a1709f5dfc620da3de2b3fbe0fd98"
   },
   "input_hashes": {
     "data/附件1.xlsx": "7ef32870abeef420b89560b2530ff60dfe4255917805151d89988d0311af9dd7",
     "data/附件2.xlsx": "5563acbfa4b4afb10cc6c03e2207e5369bf39da27576672aff14cc5c32e704af",
     "results/q1/q1_validation.json": "c6c2a4591b6ab059d27ef633c88c9f19feaec1b7d1804993f58bb5b3471d092d",
-    "results/q2/q2_validation.json": "7ec86be4f13cb0268d9ba3fc2bffaf59462318caa304af6555f849063a91c3b4",
-    "results/q2/q2_parameter_sensitivity.json": "75b55a62f3bd58dacb8731d9c8905a0541e34d0e2077a9a5e807fc39b1dbf50b",
-    "results/q3/q3_validation.json": "54e206f3f748155fb13b710dc9b6e740834436d07c26fdd8f582fd2acfec8ab5",
-    "results/q4/q4_validation.json": "35bbdeb73fbf076585d25c83d6537ce06c8e6aa3081f24c14d63617ef6a4f69a"
+    "results/q2/q2_validation.json": "5b71aba0f9366376450cdbedf80dd6d656b5d7846b076f44849634262233d681",
+    "results/q2/q2_parameter_sensitivity.json": "d648c73727df2d00f1baa766b2d6a2d05c057ffcc1f6557bba44b944d40abc93",
+    "results/q3/q3_validation.json": "b58773e249bfe8b9f6ff86ddc440b27eecd51212c59d4faeacf0cd742a7376b7",
+    "results/q4/q4_validation.json": "786bdbe6d396f42100058166b2c4f31f457d0ff285ee035cf1f07bc11ae7241b"
   },
   "main_results": {
     "q1_mean_T_1800_C": 35.16988656588392,

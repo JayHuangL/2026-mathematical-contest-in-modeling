@@ -1,4 +1,4 @@
-"""Read-only verification of the Q2 workbook against full-precision output."""
+"""以只读方式核验第二问工作簿与全精度输出。"""
 from pathlib import Path
 import hashlib
 import json
