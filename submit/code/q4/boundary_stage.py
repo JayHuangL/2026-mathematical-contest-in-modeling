@@ -1,9 +1,7 @@
-"""Shared boundary fitting and stage-detection utilities for A-question solvers.
+"""A题各问求解器共用的边界拟合与阶段检测工具。
 
-The module deliberately keeps the physical model out of the data-processing
-layer.  It supplies either the original piecewise-linear input or a smooth
-initial-value-fixed stretched-exponential input followed by a data-detected
-constant-stage blend.
+本模块将物理模型与数据处理层明确分离，提供两种边界输入：原始分段线性
+输入，或“初值固定的拉伸指数输入 + 根据数据检测到的恒定阶段过渡”。
 """
 from __future__ import annotations
 
@@ -25,7 +23,7 @@ def _stretched_value(t, y0, amplitude, tau_s, exponent):
 
 
 def fit_stretched(t: np.ndarray, y: np.ndarray, endpoint_s: float | None = None):
-    """Fit y0+A(1-exp(-(t/tau)^p)); y0 is fixed to the first record."""
+    """拟合 y0+A(1-exp(-(t/tau)^p))；y0 固定为第一条记录。"""
     t = np.asarray(t, dtype=float)
     y = np.asarray(y, dtype=float)
     if endpoint_s is None:
@@ -68,7 +66,7 @@ def fit_stretched(t: np.ndarray, y: np.ndarray, endpoint_s: float | None = None)
 
 def detect_stable_phase(t: np.ndarray, y: np.ndarray, window_s: float = 1800.0,
                        persist_windows: int = 3) -> dict:
-    """Return first persistent low-slope/low-range window after 1800 s."""
+    """返回 1800 s 之后第一个持续存在的低斜率、低波动范围窗口。"""
     t = np.asarray(t, dtype=float)
     y = np.asarray(y, dtype=float)
     dt = float(np.median(np.diff(t)))
@@ -128,13 +126,11 @@ def detect_stable_phase(t: np.ndarray, y: np.ndarray, window_s: float = 1800.0,
 def build_boundaries(environment: np.ndarray, mode: str = "staged",
                      fit_endpoint_s: float | None = None,
                      transition_s: float = 1800.0):
-    """Build temperature/moisture callables and a knot table for the solvers.
+    """为求解器构造温度/含水率边界函数和节点表。
 
-    ``mode='raw'`` reproduces the original piecewise-linear input.  The
-    default ``staged`` mode selects the stretched-exponential family, detects
-    temperature and moisture stable times independently, and gives each
-    boundary its own transition interval and measured tail mean.  The two
-    stages are therefore not replaced by their arithmetic mean.
+    `mode='raw'` 复现原始分段线性输入。默认的 `staged` 模式选择拉伸指数
+    函数族，分别检测温度和含水率的稳定时刻，并为每个边界使用独立的过渡
+    区间和实测尾段均值，因此两个阶段不会被简单替换为算术平均值。
     """
     env = np.asarray(environment, dtype=float)
     t = env[:, 0]
@@ -147,8 +143,7 @@ def build_boundaries(environment: np.ndarray, mode: str = "staged",
     phase_t = detect_stable_phase(t, env[:, 1])
     phase_c = detect_stable_phase(t, env[:, 2])
     center_t, center_c = phase_t["phase_s"], phase_c["phase_s"]
-    # The detected stable time is the first transition point.  The complete
-    # transition then occupies one forward sampling step (1800 s by default).
+    # 检测到的稳定时刻作为第一个过渡点；完整过渡区间向前延伸一个采样步长（默认 1800 s）。
     left_t, right_t = center_t, center_t + transition_s
     left_c, right_c = center_c, center_c + transition_s
     if fit_endpoint_s is None:

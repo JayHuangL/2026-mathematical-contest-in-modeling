@@ -1,4 +1,4 @@
-"""Verify the three Section 6 table artifacts and their source links."""
+"""核验第六节的三类表格产物及其来源链接。"""
 from __future__ import annotations
 
 import csv

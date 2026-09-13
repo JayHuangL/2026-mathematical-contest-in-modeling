@@ -1,9 +1,9 @@
-"""Question 1: conservative radial finite volumes + implicit BDF integration.
+"""第一问：守恒型径向有限体积法与隐式 BDF 积分。
 
-Run from this directory: python solve_q1.py
-Dependencies: numpy, scipy, openpyxl (read-only), matplotlib.
-result1.xlsx is exported separately; the solver regenerates the numerical
-payloads and validation records in the results folder.
+从当前目录运行：python solve_q1.py
+依赖：numpy、scipy、openpyxl（只读）和 matplotlib。
+result1.xlsx 由独立导出器生成；本求解器在 results 目录重新生成数值
+载荷和验证记录。
 """
 from pathlib import Path
 import argparse
@@ -19,7 +19,7 @@ from scipy.optimize import least_squares
 from scipy.sparse import diags, bmat, csr_matrix
 try:
     import openpyxl
-except ImportError:  # The standard-library reader below keeps this solver reproducible.
+except ImportError:  # 以下标准库读取器用于保持本求解器的可复现性。
     openpyxl = None
 
 HERE = Path(__file__).resolve().parent
@@ -37,8 +37,8 @@ R, RHO, CP, K, H, HM = 0.02, 820.0, 2600.0, 0.36, 25.0, 8e-7
 ALPHA = K / (RHO * CP)
 TIMES = np.arange(1801, dtype=float)
 REPORT_TIMES = np.array([100, 300, 600, 900, 1200, 1500, 1800])
-# The workbook keeps the required 0.1 cm radial output. A denser radial
-# sampling is retained separately for the continuous colour-field figure.
+# 工作簿保留题目要求的 0.1 cm 径向输出；更密的径向采样另行保留，用于连续
+# 颜色场图像。
 PLOT_RADIAL_POINTS = 201
 # 第一问只使用附件1的前1800 s数据拟合边界；第二问及以后由各自的
 # boundary_stage.py 使用完整附件1数据拟合，再在稳定分界点前调用该拟合曲线。
@@ -46,7 +46,7 @@ DEFAULT_FIT_WINDOW_S = 1800.0
 
 
 def read_environment():
-    """Read Attachment 1 without requiring a writable spreadsheet application."""
+    """以只读方式读取附件1，不要求可写的电子表格程序。"""
     path = INPUT
     if openpyxl is not None:
         wb = openpyxl.load_workbook(path, data_only=True, read_only=True)
@@ -54,7 +54,7 @@ def read_environment():
         wb.close()
         data = np.array(records[1:], dtype=float)
     else:
-        # The supplied first worksheet has one header row followed by three numeric columns.
+        # 提供的第一个工作表包含一行表头和三列数值数据。
         namespace = {'x': 'http://schemas.openxmlformats.org/spreadsheetml/2006/main'}
         with zipfile.ZipFile(path) as archive:
             root = ET.fromstring(archive.read('xl/worksheets/sheet1.xml'))
@@ -75,7 +75,7 @@ def read_environment():
 
 
 def stretched_exponential(t_s, y0, amplitude, tau_h, exponent):
-    """Monotone input smoother, with time expressed in seconds at the interface."""
+    """单调输入平滑器，接口处的时间单位为秒。"""
     tau_s = 3600.0 * tau_h
     return y0 + amplitude * (1.0 - np.exp(-(t_s / tau_s) ** exponent))
 
@@ -125,7 +125,7 @@ def fit_environment(environment, fit_window_s):
 
 
 def make_fitted_boundary(diagnostics):
-    """Return the analytical, rather than knot-wise interpolated, fitted boundary."""
+    """返回解析形式的拟合边界，而不是按节点插值得到的边界。"""
     series_for_column = {1: diagnostics['series']['T_infty_C'],
                          2: diagnostics['series']['C_infty_kg_per_kg']}
 
@@ -139,17 +139,17 @@ def make_fitted_boundary(diagnostics):
 
 def solve_field(n, field, environment, rtol=2e-10, atol=2e-12, max_step=5.0,
                 h_factor=1.0, hm_factor=1.0, d_factor=1.0, boundary=None):
-    """N intervals, N+1 nodes including r=0 and r=R.
+    """N 个区间、包含 r=0 和 r=R 的 N+1 个节点。
 
-    Last state integrates the area-average boundary exchange for a balance check.
-    Moisture interfaces use the Kirchhoff flux; all fluxes telescope.
+    最后一项状态用于对边界交换进行面积平均，以检查守恒。
+    含水率界面采用 Kirchhoff 通量；所有界面通量会望远镜式相消。
     """
     assert n % 20 == 0
     r = np.linspace(0, R, n + 1)
     dr = R / n
     faces = (r[:-1] + r[1:]) / 2
     edges = np.r_[0.0, faces, R]
-    volumes = np.diff(edges**2) / 2  # volume / (2*pi*length)
+    volumes = np.diff(edges**2) / 2  # 体积 / (2*pi*长度)
     area = R**2 / 2
     factor = faces / dr
     initial, beta, column = ((28.0, h_factor * H / (RHO * CP), 1)
@@ -215,7 +215,7 @@ def solve_field(n, field, environment, rtol=2e-10, atol=2e-12, max_step=5.0,
         if not sol.success:
             raise RuntimeError(sol.message)
         evaluations += sol.nfev
-        # Attachment knots are integer seconds; no interpolation of the terminal state needed.
+        # 附件节点的时间为整数秒，因此无需对终止状态插值。
         assert evaluation_times[-1] == stop
         state = sol.y[:, -1]
         rows = evaluation_times.astype(int)
@@ -234,7 +234,7 @@ def solve_field(n, field, environment, rtol=2e-10, atol=2e-12, max_step=5.0,
 
 
 def endpoint_metrics(result_t, result_c):
-    """Scalar outcomes used consistently in the input/parameter sensitivity table."""
+    """用于输入/参数敏感性表的统一标量结果。"""
     return {
         'T_center_1800_C': float(result_t['values'][-1, 0]),
         'T_surface_1800_C': float(result_t['values'][-1, -1]),
@@ -250,7 +250,7 @@ def metric_difference(candidate, reference):
 
 
 def run_sensitivity(n, raw_environment, fit_window_s, reference_t=None, reference_c=None):
-    """One-at-a-time scenario analysis; it is model-form/parameter sensitivity, not solver error."""
+    """一次只改变一个参数的情景分析；这是模型形式/参数敏感性，不是求解器误差。"""
     primary_environment, primary_fit = fit_environment(raw_environment, fit_window_s)
     primary_boundary = make_fitted_boundary(primary_fit)
     if reference_t is None or reference_c is None:
@@ -300,13 +300,11 @@ def run_sensitivity(n, raw_environment, fit_window_s, reference_t=None, referenc
 
 
 def make_boundary_figures(raw_environment, boundary_info):
-    """Save the two boundary figures used by section 5.1.1.
+    """保存第5.1.1节使用的两幅边界图。
 
-    The first figure is deliberately raw data only (the complete 0--14400 s
-    record).  The second is restricted to the Q1 fitting window and contains
-    only the selected stretched-exponential curve.  Keeping these plots
-    separate avoids visually mixing model selection with the later field
-    solution.
+    第一幅图只展示完整的 0--14400 s 原始数据记录；第二幅图限制在第一问
+    的拟合窗口内，只绘制选定的拉伸指数曲线。将两幅图分开可以避免把模型
+    选择过程与后续物理场求解混在一起。
     """
     import matplotlib
     matplotlib.use('Agg')
@@ -318,8 +316,7 @@ def make_boundary_figures(raw_environment, boundary_info):
     labels = [('烘房温度', '温度 / °C', 1, '#9b1c1f'),
               ('环境水分浓度', '水分浓度 / (kg/kg)', 2, '#2166ac')]
 
-    # Figure 1: no curve is overlaid; it is an honest view of the supplied
-    # 60 s observations and the later plateau.
+    # 图1不叠加拟合曲线，只如实展示题目提供的 60 s 观测和后续平台阶段。
     fig, axes = plt.subplots(1, 2, figsize=(12.5, 4.5), constrained_layout=True)
     for ax, (title, ylabel, column, color) in zip(axes, labels):
         ax.scatter(t_s, raw_environment[:, column], s=14,
@@ -331,8 +328,8 @@ def make_boundary_figures(raw_environment, boundary_info):
     fig.savefig(FIGURE_OUT / figure_name('q1', 'boundary_raw'), dpi=220)
     plt.close(fig)
 
-    # Figure 2: selected fit only, using the same 0--1800 s observations
-    # used for the Q1 identification.  No competing curves are drawn here.
+    # 图2只展示选定的拟合曲线，使用与第一问识别过程相同的 0--1800 s 观测。
+    # 此处不绘制其他候选曲线。
     if not boundary_info.get('series'):
         return
     fit_mask = t_s <= DEFAULT_FIT_WINDOW_S + 1e-9
@@ -369,8 +366,8 @@ def make_figures(result_t, result_c, env):
 
     plt.rcParams.update({'font.sans-serif': ['Microsoft YaHei', 'SimHei', 'DejaVu Sans'],
                          'axes.unicode_minus': False, 'font.size': 10})
-    # The workbook stores 21 radii (0--2 cm at 0.1 cm intervals), while the
-    # figure uses the denser samples retained by solve_field.
+    # 工作簿存储 21 个半径位置（0--2 cm，间隔 0.1 cm），图像则使用 solve_field
+    # 保留的更密采样。
     time_min = TIMES / 60.0
     temperature_values = result_t.get('plot_values', result_t['values'])
     moisture_values = result_c.get('plot_values', result_c['values'])
@@ -418,11 +415,11 @@ def main():
     parser.add_argument('--grids', type=int, nargs='+', default=[800, 1600, 3200, 6400])
     parser.add_argument('--check-time', action='store_true')
     parser.add_argument('--boundary-mode', choices=('fit', 'linear'), default='fit',
-                        help='Use the nonlinear boundary fit (default) or the backed-up linear input.')
+                        help='使用非线性边界拟合（默认），或回退到原始线性输入。')
     parser.add_argument('--fit-window-s', type=float, default=DEFAULT_FIT_WINDOW_S,
-                        help='Attachment-1 fitting window; the solver still stops at 1800 s.')
+                        help='附件1拟合时间窗口；求解仍在 1800 s 处停止。')
     parser.add_argument('--sensitivity-grid', type=int, default=800,
-                        help='Radial intervals used for one-at-a-time sensitivity scenarios.')
+                        help='一次只改变一个参数的敏感性情景所使用的径向区间数。')
     parser.add_argument('--skip-sensitivity', action='store_true')
     args = parser.parse_args()
     raw_env = read_environment()
@@ -435,8 +432,8 @@ def main():
         boundary_info = {'mode': 'piecewise_linear', 'fit_window_s': None,
                          'series': {}, 'family': 'Attachment-1 piecewise-linear interpolation'}
         boundary_evaluator = None
-    # Section 5.1.1 uses these two plots to separate raw-data inspection,
-    # model comparison, and the final selected boundary representation.
+    # 第5.1.1节使用这两幅图分别展示原始数据检查、模型比较和最终选定的边界
+    # 表示。
     make_boundary_figures(raw_env, boundary_info)
     previous = None
     convergence = []

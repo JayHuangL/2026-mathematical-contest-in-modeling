@@ -1,4 +1,4 @@
-"""Lightweight independent checks for the integrated submission package."""
+"""对一体化提交包执行轻量级独立核验。"""
 from __future__ import annotations
 
 import csv
@@ -233,9 +233,8 @@ def main() -> None:
                   for path in generated_figure_paths],
     }
 
-    # These files are upstream data-preprocessing evidence or manually authored
-    # geometry diagrams. They do not depend on the PDE face-flux implementation,
-    # so the formal run validates and records them without pretending to rebuild them.
+    # 这些文件属于上游数据预处理证据或人工制作的几何示意图，不依赖 PDE 面通量
+    # 实现。因此正式运行只核验并记录它们，不虚构为由程序重新生成。
     boundary_cv_path = RESULTS / "q1" / artifact_name("q1", "boundary_cv")
     endpoint_path = RESULTS / "q1" / artifact_name("q1", "boundary_endpoint_comparison")
     boundary_cv = _csv_records(boundary_cv_path)
@@ -257,8 +256,8 @@ def main() -> None:
         "input_dependency": "附件1.xlsx (unchanged hash recorded above)",
     }
 
-    # The two CSV files are upstream numerical diagnostics.  They are kept as
-    # result evidence and are checked against the current input and source.
+    # 这两个 CSV 文件是上游数值诊断结果，作为结果证据保留，并与当前输入和源代码
+    # 进行一致性核验。
     static_assets = [boundary_cv_path, endpoint_path]
     checks["static_assets_sha256"] = {
         path.relative_to(PACKAGE).as_posix(): _hash(path) for path in static_assets

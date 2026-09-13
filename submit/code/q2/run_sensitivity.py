@@ -1,8 +1,7 @@
-"""Rebuild the Q2 parameter-sensitivity diagnostic.
+"""重新生成第二问参数敏感性诊断结果。
 
-The parameter sensitivity is recomputed with the current Q2 solver, so it
-automatically uses the same staged boundary and Kirchhoff moisture flux as
-the formal result.
+参数敏感性使用当前第二问求解器重新计算，因此自动采用与正式结果相同的
+分阶段边界和 Kirchhoff 含水率通量。
 """
 from __future__ import annotations
 

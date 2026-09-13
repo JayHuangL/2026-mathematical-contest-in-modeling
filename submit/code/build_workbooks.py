@@ -1,4 +1,4 @@
-"""Build all four result workbooks from the JSON payloads in submit/results."""
+"""根据 submit/results 中的 JSON 结果载荷构建四个结果工作簿。"""
 from __future__ import annotations
 
 import json

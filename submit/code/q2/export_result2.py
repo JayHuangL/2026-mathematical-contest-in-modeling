@@ -1,4 +1,4 @@
-"""Export the computed Question 2 arrays into the supplied workbook template."""
+"""将第二问计算得到的数组导出到题目提供的工作簿模板。"""
 from pathlib import Path
 import json
 import sys

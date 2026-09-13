@@ -1,10 +1,9 @@
-"""Build the three error-analysis tables for Section 6.
+"""生成论文第六节的三类误差分析表。
 
-The script consumes the current formal Q1--Q4 records.  It writes only
-structured tables: numerical convergence, parameter sensitivity, and
-long-term-boundary systematic-error scenarios.
+脚本读取当前第一至第四问的正式结果记录，只写出结构化表格：数值收敛、
+参数敏感性和长期边界系统误差情景。
 
-Run from the submit directory:
+从 submit 目录运行：
 
     conda run --no-capture-output -n 2026modeling python code/p6/run_p6.py
 """
@@ -204,7 +203,7 @@ def q2_sensitivity_rows(q2_sensitivity: dict) -> list[dict]:
 
 def make_boundary_ensemble(raw_env: np.ndarray, build_boundaries, q2_model,
                            sample_count: int, seed: int) -> tuple[list[dict], dict]:
-    """Propagate centered stable-tail residual blocks through Q3 and Q4."""
+    """将稳定尾段的中心残差块传播到第三、第四问。"""
     q3_model = load_module("p6_q3_model", CODE / "q3" / "solve_q3.py")
     q4_model = load_module("p6_q4_model", CODE / "q4" / "solve_q4.py")
 

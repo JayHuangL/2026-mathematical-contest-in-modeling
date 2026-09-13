@@ -1,4 +1,4 @@
-"""Q3: reuse Q2 equations, detect max(C)=0.15, export each 60 s.
+"""第三问：复用第二问方程，定位 max(C)=0.15，并每 60 s 导出结果。
 python 第三问/solve_q3.py --check-time --sensitivity
 """
 from pathlib import Path
@@ -83,7 +83,7 @@ def _integrate(q2, env, n, rtol=2e-10, atol=2e-12, max_step=300., tail=None,
         if not sol.success:
             raise RuntimeError(sol.message)
         end = sol.t[-1]
-        # Check all physical nodes at the integrator's accepted states.
+    # 在积分器接受的每个状态上检查所有物理节点。
         assert np.min(sol.y[m:2*m]) > 0 and np.max(sol.y[m:2*m]) <= 2.55+1e-8
         max_radial_increase = max(max_radial_increase,float(np.max(np.diff(sol.y[m:2*m],axis=0))))
         balance = max(balance,float(np.max(np.abs(model.w@sol.y[m:2*m]/model.area-2.55-sol.y[-1]))))
@@ -106,7 +106,7 @@ def _integrate(q2, env, n, rtol=2e-10, atol=2e-12, max_step=300., tail=None,
             break
     if event_t is None:
         raise RuntimeError('Threshold not reached within 240 h; no time is fabricated.')
-    # Round UP to four decimals in hours so the published duration is actually below threshold.
+    # 向上取整到小时的四位小数，确保公布时长对应的状态确实低于阈值。
     finish_h = np.ceil(event_t/3600*1e4)/1e4
     finish_s = float(finish_h*3600)
     if finish_s-event_t < 1e-7:
@@ -155,14 +155,11 @@ def plot(result,out):
         'moisture_gray_blue',
         [(0.00,'#f0f0f0'),(0.13,'#d9d9d9'),(0.20,'#bdbdbd'),
          (0.24,'#9ecae1'),(0.50,'#3182bd'),(1.00,'#08519c')])
-    # Emphasize the low-concentration range while retaining a monotone
-    # gray-to-blue interpretation for the concentration field.
+    # 突出低浓度区间，同时保留含水率场从灰色到蓝色的单调颜色含义。
     moisture_cmap.set_bad('#ffffff')
-    # A sublinear map places the median concentration near the visual midpoint,
-    # keeping gray and blue regions visually comparable.
-    # Start the displayed scale at 0.08 kg/kg; lower values are clipped to
-    # the light-gray endpoint so 0.08 is the bottom colorbar tick.  The
-    # milder sublinear exponent keeps 0.12 and 0.15 close to the bottom.
+    # 次线性映射将中位浓度放在视觉中部附近，使灰色区和蓝色区的面积观感保持可比。
+    # 显示刻度从 0.08 kg/kg 开始；更低的数值裁剪到浅灰色端点，因此 0.08 是色标
+    # 的底部刻度。较温和的次线性指数使 0.12 和 0.15 仍靠近色标底部。
     moisture_norm=PowerNorm(gamma=0.5,vmin=0.08,
                             vmax=float(np.nanmax(moisture)),clip=True)
     moisture_ticks=np.array([0.08,0.12,0.15,0.30,0.60,1.00,1.50,2.00,2.55])
@@ -185,15 +182,15 @@ def plot(result,out):
 def main():
     parser=argparse.ArgumentParser()
     parser.add_argument('--root',type=Path,default=PACKAGE/'data',
-                        help='Kept for command compatibility; the unified package uses its local data directory.')
+                        help='为兼容旧命令保留；一体化提交包使用其本地 data 目录。')
     parser.add_argument('--out',type=Path,default=OUT)
     parser.add_argument('--grids',type=int,nargs='+',default=[400,800,1600,3200])
     parser.add_argument('--check-time',action='store_true')
     parser.add_argument('--sensitivity',action='store_true')
     parser.add_argument('--boundary-mode',choices=('staged','raw'),default='staged',
-                        help='Use independent detected temperature/moisture stage boundaries (default) or raw 60 s knots.')
+                        help='使用分别检测的温度/含水率阶段边界（默认），或使用原始 60 s 节点。')
     parser.add_argument('--fit-endpoint-s',type=float,default=None,
-                        help='Optional common fit endpoint; default is each variable transition point.')
+                        help='可选的共同拟合终点；默认使用各变量自身的过渡点。')
     args=parser.parse_args()
     args.out.mkdir(parents=True,exist_ok=True)
     q2=load_q2(args.root)

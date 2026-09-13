@@ -1,7 +1,7 @@
-"""Question 2: coupled radial heat/moisture transport, Appendix 3 throughout.
+"""第二问：全程采用附录3的耦合径向传热/传质模型。
 
-Run from this directory with ``python solve_q2.py --check-time``.
-Input: data/附件1.xlsx. Excel export: export_result2.py.
+从当前目录运行：`python solve_q2.py --check-time`。
+输入：data/附件1.xlsx；Excel 导出器：export_result2.py。
 """
 from pathlib import Path
 import argparse
@@ -52,10 +52,10 @@ def read_environment():
 
 
 def properties(T, C):
-    """T is stored in Celsius. Only the Arrhenius factor uses Kelvin.
+    """T 以摄氏度存储，只有 Arrhenius 因子使用开尔文温度。
 
-    Return b=rho*cp, k, D and their partial derivatives.
-    Complex input is supported for an independent complex-step Jacobian check.
+    返回 b=rho*cp、k、D 及其偏导数。
+    支持复数输入，以便独立进行复步长 Jacobian 核验。
     """
     kelvin = T + 273.15
     if np.min(np.real(C)) <= 0 or np.min(np.real(kelvin)) <= 0:
@@ -91,8 +91,8 @@ class CoupledModel:
             return float(self.boundary[0](t)), float(self.boundary[1](t))
         if t > self.env[-1, 0] and self.tail != 'hold_last':
             raise ValueError('Environment data exhausted. Explicitly select a tail assumption.')
-        # np.interp holds the final observation outside the provided time range.
-        # This is explicit via tail='hold_last' and is unused during Q2's first 3 h.
+    # 在给定时间范围之外，np.interp 保持最后一条观测值不变。
+    # 这一行为由 tail='hold_last' 显式指定，且在第二问最初 3 h 的计算中不会触发。
         return np.interp(t, self.env[:, 0], self.env[:, 1]), np.interp(t, self.env[:, 0], self.env[:, 2])
 
     def rhs(self, t, state):
@@ -252,7 +252,7 @@ def make_figures(result, env):
 
 
 def make_boundary_stage_figure(raw_env, boundary_info):
-    """Show how the two stable points are detected from smoothed data."""
+    """展示如何从平滑后的数据中检测两个稳定点。"""
     import matplotlib
     matplotlib.use('Agg')
     import matplotlib.pyplot as plt
@@ -291,7 +291,7 @@ def make_boundary_stage_figure(raw_env, boundary_info):
 
 
 def make_staged_boundary_figure(raw_env, boundary_t, boundary_c, boundary_info):
-    """Plot raw observations together with the final piecewise boundaries."""
+    """将原始观测与最终的分段边界绘制在同一图中。"""
     import matplotlib
     matplotlib.use('Agg')
     import matplotlib.pyplot as plt
@@ -335,9 +335,9 @@ def main():
     parser.add_argument('--grids', type=int, nargs='+', default=[800, 1600, 3200, 6400])
     parser.add_argument('--check-time', action='store_true')
     parser.add_argument('--boundary-mode', choices=('staged', 'raw'), default='staged',
-                        help='Use the detected smooth constant-stage boundary (default) or raw 60 s knots.')
+                        help='使用检测得到的平滑恒定阶段边界（默认），或使用原始 60 s 节点。')
     parser.add_argument('--fit-endpoint-s', type=float, default=None,
-                        help='Optional common fit endpoint; when omitted, fit temperature/moisture to their own transition points.')
+                        help='可选的共同拟合终点；省略时分别拟合温度和含水率到各自的过渡点。')
     args = parser.parse_args()
     raw_env = read_environment()
     boundary_t, boundary_c, env, boundary_info = build_boundaries(
@@ -373,7 +373,7 @@ def main():
     assert np.max(result['T']) <= np.max(env[env[:, 0] <= END_TIME, 1])+1e-8
     assert np.min(result['C']) > 0 and np.max(result['C']) <= C0+1e-8
     assert np.max(np.diff(result['C'], axis=1)) < 1e-7
-    # Temperature can locally reverse gradient under measured chamber fluctuations.
+    # 受烘房实测波动影响，温度梯度局部可能发生反向。
     payload = {'r_cm': np.round(np.linspace(0, 2, 21), 1).tolist(),
                't_s': result['t'][1:].astype(int).tolist(),
                'T': np.round(result['T'][1:], 4).tolist(),
@@ -421,6 +421,6 @@ def main():
 
 
 if __name__ == '__main__':
-    # Sparse banded systems do not benefit from an oversubscribed dense BLAS pool.
+    # 稀疏带状系统不适合使用超额分配的稠密 BLAS 线程池。
     with threadpool_limits(limits=1):
         main()

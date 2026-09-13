@@ -1,7 +1,7 @@
-"""Export the Question 1 JSON payload to the required result1.xlsx workbook.
+"""将第一问 JSON 结果载荷导出为规定的 result1.xlsx 工作簿。
 
-Run this file through run_all.py or directly from the integrated package.
-The template is kept in data/result1_template.xlsx.
+可通过 run_all.py 或直接在一体化提交包中运行本文件。
+工作簿模板位于 data/result1_template.xlsx。
 """
 
 from __future__ import annotations
@@ -24,7 +24,7 @@ OUTPUT = workbook_path(PACKAGE / "results", "q1")
 
 
 def write_sheet(ws, times, positions, values):
-    """Write one field in the problem's time-by-radius layout."""
+    """按题目要求的“时间—半径位置”布局写入一个物理场。"""
     if len(times) != len(values):
         raise ValueError(f"{ws.title}: time and value row counts differ")
     if not values or len(values[0]) != len(positions):

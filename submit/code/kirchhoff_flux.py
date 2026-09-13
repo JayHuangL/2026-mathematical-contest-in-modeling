@@ -1,9 +1,7 @@
-"""Kirchhoff face averages for nonlinear moisture diffusivity.
+"""非线性含水率扩散系数的 Kirchhoff 面平均。
 
-The temperature is frozen at the arithmetic face temperature while the
-diffusivity is integrated along the moisture segment joining two nodes.
-Eight-point Gauss--Legendre quadrature is effectively exact for the smooth
-constitutive laws used in Questions 1--4.
+温度取面两侧节点温度的算术平均值，扩散系数沿连接两节点的含水率线段积分。
+对于第一至第四问使用的光滑本构关系，八点 Gauss–Legendre 求积已足够精确。
 """
 from __future__ import annotations
 
@@ -16,10 +14,10 @@ W = _W / 2.0
 
 
 def moisture_face(T_left, T_right, C_left, C_right, material):
-    """Return D_K and its four endpoint derivatives.
+    """返回 D_K 及其四个端点导数。
 
-    ``material(T, C)`` must return ``(..., D, ..., D_C, D_T)`` in the same
-    format as the constitutive functions in Questions 2 and 4.
+    `material(T, C)` 必须返回与第二问、第四问本构函数相同格式的
+    `(..., D, ..., D_C, D_T)`。
     """
     c = C_left[:, None] + (C_right - C_left)[:, None] * S
     tf = ((T_left + T_right) / 2.0)[:, None]
@@ -32,7 +30,7 @@ def moisture_face(T_left, T_right, C_left, C_right, material):
 
 
 def scalar_face(u_left, u_right, coefficient):
-    """Return the Kirchhoff average and endpoint derivatives for D(u)."""
+    """返回 D(u) 的 Kirchhoff 平均值及其端点导数。"""
     u = u_left[:, None] + (u_right - u_left)[:, None] * S
     d, d_u = coefficient(u)
     d_face = np.sum(W * d, axis=1)
