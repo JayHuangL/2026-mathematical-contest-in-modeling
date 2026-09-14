@@ -1,0 +1,156 @@
+"""重新生成第二问参数敏感性诊断结果。
+
+参数敏感性使用当前第二问求解器重新计算，因此自动采用与正式结果相同的
+分阶段边界和 Kirchhoff 含水率通量。
+"""
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+import sys
+from pathlib import Path
+
+import numpy as np
+from threadpoolctl import threadpool_limits
+
+HERE = Path(__file__).resolve().parent
+PACKAGE = HERE.parents[1]
+if str(HERE) not in sys.path:
+    sys.path.insert(0, str(HERE))
+if str(HERE.parent) not in sys.path:
+    sys.path.insert(0, str(HERE.parent))
+from artifact_names import artifact_name, figure_name
+import solve_q2 as q2
+
+
+OUT = PACKAGE / "results" / "q2"
+FIGURE_OUT = PACKAGE / "figures" / "q2"
+OUT.mkdir(parents=True, exist_ok=True)
+FIGURE_OUT.mkdir(parents=True, exist_ok=True)
+PARAMETERS = ("h", "hm", "capacity", "conductivity", "diffusivity")
+
+
+def _sha256(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def run_case(boundary, environment, base_properties, base_h, base_hm,
+             parameter: str | None, factor: float, grid: int) -> dict:
+    q2.H, q2.HM = base_h, base_hm
+
+    def properties(temperature, moisture):
+        b, k, d, b_c, k_c, d_c, d_t = base_properties(temperature, moisture)
+        if parameter == "capacity":
+            b, b_c = factor * b, factor * b_c
+        elif parameter == "conductivity":
+            k, k_c = factor * k, factor * k_c
+        elif parameter == "diffusivity":
+            d, d_c, d_t = factor * d, factor * d_c, factor * d_t
+        return b, k, d, b_c, k_c, d_c, d_t
+
+    if parameter == "h":
+        q2.H = base_h * factor
+    elif parameter == "hm":
+        q2.HM = base_hm * factor
+    q2.properties = properties
+    result = q2.solve_model(grid, environment, boundary=boundary)
+    return {
+        "case": "baseline" if parameter is None else f"{parameter}_{factor:.1f}",
+        "parameter": parameter,
+        "factor": factor,
+        "T_center_3h": float(result["T"][-1, 0]),
+        "T_surface_3h": float(result["T"][-1, -1]),
+        "mean_T_3h": float(result["mean_T"][-1]),
+        "C_center_3h": float(result["C"][-1, 0]),
+        "C_surface_3h": float(result["C"][-1, -1]),
+        "mean_C_3h": float(result["mean_C"][-1]),
+    }
+
+
+def run_parameter_sensitivity(grid: int) -> dict:
+    raw = q2.read_environment()
+    boundary_t, boundary_c, environment, boundary_info = q2.build_boundaries(raw, mode="staged")
+    boundary = (boundary_t, boundary_c)
+    base_properties, base_h, base_hm = q2.properties, q2.H, q2.HM
+    try:
+        records = [run_case(boundary, environment, base_properties, base_h, base_hm,
+                            None, 1.0, grid)]
+        for parameter in PARAMETERS:
+            for factor in (0.8, 1.2):
+                records.append(run_case(boundary, environment, base_properties, base_h, base_hm,
+                                        parameter, factor, grid))
+    finally:
+        q2.properties, q2.H, q2.HM = base_properties, base_h, base_hm
+
+    baseline = records[0]
+    metrics = [key for key in baseline if key.endswith("_3h")]
+    for record in records:
+        record["delta"] = {key: record[key] - baseline[key] for key in metrics}
+    elasticities = {}
+    for parameter in PARAMETERS:
+        low = next(row for row in records if row["case"] == f"{parameter}_0.8")
+        high = next(row for row in records if row["case"] == f"{parameter}_1.2")
+        elasticities[parameter] = {
+            key: (high[key] - low[key]) / (0.4 * baseline[key]) for key in metrics
+        }
+    payload = {
+        "model": "current Q2 staged-boundary model with Kirchhoff moisture flux",
+        "definition": "central dimensionless sensitivity [Y(1.2p)-Y(0.8p)]/(0.4Y(p))",
+        "grid_intervals": grid,
+        "rtol": 2e-10,
+        "atol": 2e-12,
+        "max_step_s": 5.0,
+        "boundary_metadata": boundary_info,
+        "source_sha256": {
+            "code/q2/solve_q2.py": _sha256(Path(q2.__file__)),
+            "code/q2/run_sensitivity.py": _sha256(Path(__file__)),
+            "code/q2/boundary_stage.py": _sha256(Path(q2.__file__).with_name("boundary_stage.py")),
+            "code/kirchhoff_flux.py": _sha256(PACKAGE / "code" / "kirchhoff_flux.py"),
+        },
+        "records": records,
+        "central_dimensionless_sensitivity": elasticities,
+    }
+    (OUT / artifact_name("q2", "parameter_sensitivity")).write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+    return payload
+
+
+def make_sensitivity_figure(payload: dict) -> None:
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    plt.rcParams.update({"font.sans-serif": ["Microsoft YaHei", "SimHei", "DejaVu Sans"],
+                         "axes.unicode_minus": False, "font.size": 10})
+    labels = [r"$h$", r"$h_m$", r"$\rho c_p$", r"$k$", r"$D$"]
+    elasticities = payload["central_dimensionless_sensitivity"]
+    values_t = [elasticities[p]["mean_T_3h"] for p in PARAMETERS]
+    values_c = [elasticities[p]["mean_C_3h"] for p in PARAMETERS]
+    fig, axes = plt.subplots(1, 2, figsize=(11, 4.5), constrained_layout=True)
+    colors = ["#4c78a8" if value >= 0 else "#e45756" for value in values_t]
+    axes[0].bar(labels, values_t, color=colors)
+    colors = ["#4c78a8" if value >= 0 else "#e45756" for value in values_c]
+    axes[1].bar(labels, values_c, color=colors)
+    axes[0].set_title("3 h 平均温度的无量纲敏感度")
+    axes[1].set_title("3 h 平均含水率的无量纲敏感度")
+    for ax in axes:
+        ax.axhline(0.0, color="black", lw=0.8)
+        ax.set_xlabel("扰动参数（±20% 中心差分）")
+        ax.set_ylabel("无量纲敏感度")
+        ax.grid(axis="y", alpha=0.22)
+    fig.savefig(FIGURE_OUT / figure_name("q2", "parameter_sensitivity"), dpi=180)
+    plt.close(fig)
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--grid", type=int, default=200)
+    args = parser.parse_args()
+    payload = run_parameter_sensitivity(args.grid)
+    make_sensitivity_figure(payload)
+    print(json.dumps(payload, ensure_ascii=False, indent=2), flush=True)
+
+
+if __name__ == "__main__":
+    with threadpool_limits(limits=1):
+        main()
